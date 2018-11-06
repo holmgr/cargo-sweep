@@ -1,9 +1,9 @@
 extern crate clap;
 
 use clap::{App, Arg, SubCommand};
+use std::{env, path::PathBuf};
 
 fn main() {
-    // TODO: Add path argument
     let matches = App::new("Cargo sweep")
         .version("0.1")
         .author("Viktor Holmgren <viktor.holmgren@gmail.com>")
@@ -23,6 +23,11 @@ fn main() {
                         .help("Number of days to backwards to keep")
                         .takes_value(true)
                         .required(true),
+                ).arg(
+                    Arg::with_name("path")
+                        .index(1)
+                        .value_name("path")
+                        .help("Path to check"),
                 ),
         ).get_matches();
 
@@ -34,7 +39,13 @@ fn main() {
             .parse()
             .expect("Invalid time format");
 
+        let path = match matches.value_of("path") {
+            Some(p) => PathBuf::from(p),
+            None => env::current_dir().expect("Failed to get current directory"),
+        };
+
         println!("Days to keep: {}", days_to_keep);
+        println!("Path to clean: {:?}", path);
     }
 
     // Continued program logic goes here...
