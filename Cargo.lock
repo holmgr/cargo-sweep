@@ -1,0 +1,4 @@
+[[package]]
+name = "cargo-sweep"
+version = "0.1.0"
+

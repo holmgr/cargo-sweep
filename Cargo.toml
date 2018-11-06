@@ -1,0 +1,6 @@
+[package]
+name = "cargo-sweep"
+version = "0.1.0"
+authors = ["holmgr <viktor.holmgren@gmail.com>"]
+
+[dependencies]
