@@ -171,7 +171,7 @@ fn main() {
             Some(p) => PathBuf::from(p),
             None => env::current_dir().expect("Failed to get current directory"),
         };
-        
+
         if matches.is_present("recursive") {
             for project_path in find_cargo_projects(&path) {
                 match try_clean_path(&project_path, &keep_duration) {
@@ -179,8 +179,7 @@ fn main() {
                     Err(e) => error!("Failed to clean {:?}: {}", path, e),
                 };
             }
-        }
-        else {
+        } else {
             match try_clean_path(&path, &keep_duration) {
                 Ok(_) => {}
                 Err(e) => error!("Failed to clean {:?}: {}", path, e),
