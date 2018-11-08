@@ -5,5 +5,5 @@ authors = ["holmgr <viktor.holmgren@gmail.com>"]
 
 [dependencies]
 clap = "2.32.0"
-serde_json = "1.0.0"
 walkdir = "2"
+failure = "0.1.3"

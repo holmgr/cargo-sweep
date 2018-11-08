@@ -1,36 +1,68 @@
 extern crate clap;
-extern crate serde_json;
+extern crate failure;
 extern crate walkdir;
 
 use clap::{App, Arg, SubCommand};
-use serde_json::Value;
+use failure::Error;
 use std::{
-    env, fs,
+    env,
+    fs::{read_dir, remove_dir, remove_file},
     path::{Path, PathBuf},
-    process::Command,
-    str::from_utf8,
+    time::Duration,
 };
 use walkdir::WalkDir;
 
-fn remove_file_dir(file: &Path) {
-    if fs::metadata(&file).unwrap().is_dir() {
-        fs::remove_dir_all(file).expect("Failed to remove file");
-    } else {
-        fs::remove_file(file).expect("Failed to remove file");
+/// Returns whether the given path points to a valid Cargo project.
+fn is_cargo_root(path: &Path) -> bool {
+    let mut path = path.to_path_buf();
+
+    // Check that cargo.toml exists.
+    path.push("Cargo.toml");
+    if !path.as_path().exists() {
+        return false;
     }
+
+    // Check that target dir exists.
+    path.pop();
+    path.push("target/");
+    path.as_path().exists()
 }
 
-/// Returns the hash contained in the filename of the path, if it exists.
-fn get_hash(path: PathBuf) -> Option<String> {
-    path.file_stem()
-        .and_then(|name| name.to_str())
-        .map(|name_str| {
-            let (_, hash) = name_str.split_at(name_str.find("-").unwrap_or(0) + 1);
-            String::from(hash)
-        })
-        // Only keep real hashes, i.e 16 length caracter strings.
-        // TODO: Do something more sophisticated.
-        .and_then(|hash| if hash.len() == 16 { Some(hash) } else { None })
+/// Attempts to sweep the cargo project lookated at the given path,
+/// keeping only files which have been accessed within the given duration.
+/// Returns a list of the deleted file/dir paths.
+fn try_clean_path<'a>(path: &'a Path, keep_duration: &Duration) -> Result<Vec<PathBuf>, Error> {
+    let mut cleaned_file_paths = vec![];
+
+    let mut target_path = path.to_path_buf();
+    target_path.push("target/");
+    for entry in WalkDir::new(target_path.to_str().unwrap())
+        .min_depth(1)
+        .contents_first(true)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let metadata = entry.metadata()?;
+        let access_time = metadata.accessed()?;
+        println!(
+            "{:?} Access time: {:?} comp: {:?}",
+            entry.path(),
+            access_time.elapsed()?,
+            keep_duration
+        );
+        if access_time.elapsed()? > *keep_duration {
+            cleaned_file_paths.push(entry.path().to_path_buf());
+
+            // Remove only empty directories.
+            if metadata.file_type().is_dir() && read_dir(entry.path())?.count() == 0 {
+                remove_dir(entry.path())?;
+            } else if metadata.file_type().is_file() {
+                remove_file(entry.path())?;
+            }
+        }
+    }
+
+    Ok(cleaned_file_paths)
 }
 
 fn main() {
@@ -40,7 +72,6 @@ fn main() {
         .about("Clean old/unused Cargo artifacts")
         .subcommand(
             SubCommand::with_name("sweep")
-                .about("Sweeps the target directory")
                 .arg(
                     Arg::with_name("verbose")
                         .short("v")
@@ -63,65 +94,22 @@ fn main() {
 
     if let Some(matches) = matches.subcommand_matches("sweep") {
         // First unwrap is safe due to clap check.
-        let days_to_keep: u32 = matches
+        let days_to_keep: u64 = matches
             .value_of("time")
             .unwrap()
             .parse()
             .expect("Invalid time format");
+        let keep_duration = Duration::from_secs(days_to_keep * 24 * 3600);
 
+        // Default to current invocation path.
         let path = match matches.value_of("path") {
             Some(p) => PathBuf::from(p),
             None => env::current_dir().expect("Failed to get current directory"),
         };
 
-        println!("Days to keep: {}", days_to_keep);
-        println!("Path to clean: {:?}", path);
-
-        let check_cmd_output = Command::new("cargo")
-            .args(&["build", "--message-format=json"])
-            .current_dir(&path)
-            .output()
-            .expect("Failed to run cargo check")
-            .stdout;
-        let cmd_str = from_utf8(&check_cmd_output).unwrap();
-
-        // TODO: Extract hashes instead, find all files containing them and delete.
-        let filenames = cmd_str
-            .lines()
-            .flat_map(|line| {
-                let check_json: Value = serde_json::from_str(line).expect("Failed to parse json");
-                match check_json["filenames"] {
-                    Value::Array(ref fs) => fs
-                        .iter()
-                        .cloned()
-                        .filter_map(|f| match f {
-                            Value::String(s) => Some(s),
-                            _ => None,
-                        }).collect::<Vec<_>>(),
-                    _ => vec![],
-                }.into_iter()
-            }).collect::<Vec<String>>();
-
-        let hashes: Vec<_> = filenames
-            .into_iter()
-            .filter_map(|f| get_hash(PathBuf::from(f)))
-            .collect();
-
-        println!("Found hashes\n {:#?}", hashes);
-
-        let mut target_path = path.clone();
-        target_path.push("target");
-        for entry in WalkDir::new(target_path.to_str().unwrap())
-            .contents_first(true)
-            .into_iter()
-            .filter_map(|e| e.ok())
-        {
-            let entry_path = entry.into_path();
-            if let Some(entry_hash) = get_hash(entry_path.clone()) {
-                if hashes.iter().any(|h| *h == entry_hash) {
-                    remove_file_dir(&entry_path);
-                }
-            }
-        }
+        match try_clean_path(&path, &keep_duration) {
+            Ok(paths) => println!("Cleaned paths: \n {:#?}", paths),
+            Err(e) => eprintln!("Failed to clean {:?}: {}", path, e),
+        };
     }
 }
