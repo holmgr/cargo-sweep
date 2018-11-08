@@ -68,6 +68,23 @@ fn is_cargo_root(path: &Path) -> bool {
     path.as_path().exists()
 }
 
+/// Find all cargo project under the given root path.
+fn find_cargo_projects(root: &Path) -> Vec<PathBuf> {
+    let mut project_paths = vec![];
+    for entry in WalkDir::new(root.to_str().unwrap())
+        .min_depth(1)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        if let Ok(metadata) = entry.metadata() {
+            if metadata.is_dir() && is_cargo_root(entry.path()) {
+                project_paths.push(entry.path().to_path_buf());
+            }
+        }
+    }
+    project_paths
+}
+
 /// Attempts to sweep the cargo project lookated at the given path,
 /// keeping only files which have been accessed within the given duration.
 /// Returns a list of the deleted file/dir paths.
@@ -117,6 +134,10 @@ fn main() {
                         .short("v")
                         .help("Turn verbose information on"),
                 ).arg(
+                    Arg::with_name("recursive")
+                        .short("r")
+                        .help("Apply on all projects below the given path"),
+                ).arg(
                     Arg::with_name("time")
                         .short("t")
                         .long("time")
@@ -149,10 +170,20 @@ fn main() {
             Some(p) => PathBuf::from(p),
             None => env::current_dir().expect("Failed to get current directory"),
         };
-
-        match try_clean_path(&path, &keep_duration) {
-            Ok(_) => {}
-            Err(e) => error!("Failed to clean {:?}: {}", path, e),
-        };
+        
+        if matches.is_present("recursive") {
+            for project_path in find_cargo_projects(&path) {
+                match try_clean_path(&project_path, &keep_duration) {
+                    Ok(_) => {}
+                    Err(e) => error!("Failed to clean {:?}: {}", path, e),
+                };
+            }
+        }
+        else {
+            match try_clean_path(&path, &keep_duration) {
+                Ok(_) => {}
+                Err(e) => error!("Failed to clean {:?}: {}", path, e),
+            };
+        }
     }
 }
