@@ -71,6 +71,7 @@ fn is_cargo_root(path: &Path) -> bool {
 /// Find all cargo project under the given root path.
 fn find_cargo_projects(root: &Path) -> Vec<PathBuf> {
     let mut project_paths = vec![];
+    // Sub directories cannot be checked due to internal crates.
     for entry in WalkDir::new(root.to_str().unwrap())
         .min_depth(1)
         .into_iter()
