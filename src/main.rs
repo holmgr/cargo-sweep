@@ -1,9 +1,14 @@
+extern crate chrono;
 extern crate clap;
 extern crate failure;
 extern crate walkdir;
+#[macro_use]
+extern crate log;
+extern crate fern;
 
 use clap::{App, Arg, SubCommand};
 use failure::Error;
+use fern::colors::{Color, ColoredLevelConfig};
 use std::{
     env,
     fs::{read_dir, remove_dir, remove_file},
@@ -11,6 +16,41 @@ use std::{
     time::Duration,
 };
 use walkdir::WalkDir;
+
+/// Setup logging according to verbose flag.
+fn setup_logging(verbose: bool) {
+    // configure colors for the whole line
+    let colors_line = ColoredLevelConfig::new()
+        .error(Color::Red)
+        .warn(Color::Yellow)
+        .info(Color::White)
+        .debug(Color::White)
+        .trace(Color::BrightBlack);
+
+    let level = if verbose {
+        log::LevelFilter::Debug
+    } else {
+        log::LevelFilter::Warn
+    };
+
+    let colors_level = colors_line.info(Color::Green);
+    fern::Dispatch::new()
+        .format(move |out, message, record| {
+            out.finish(format_args!(
+                "{color_line}[{level}{color_line}] {message}\x1B[0m",
+                color_line = format_args!(
+                    "\x1B[{}m",
+                    colors_line.get_color(&record.level()).to_fg_str()
+                ),
+                level = colors_level.color(record.level()),
+                message = message,
+            ));
+        }).level(level)
+        .level_for("pretty_colored", log::LevelFilter::Trace)
+        .chain(std::io::stdout())
+        .apply()
+        .unwrap();
+}
 
 /// Returns whether the given path points to a valid Cargo project.
 fn is_cargo_root(path: &Path) -> bool {
@@ -44,20 +84,20 @@ fn try_clean_path<'a>(path: &'a Path, keep_duration: &Duration) -> Result<Vec<Pa
     {
         let metadata = entry.metadata()?;
         let access_time = metadata.accessed()?;
-        println!(
-            "{:?} Access time: {:?} comp: {:?}",
-            entry.path(),
-            access_time.elapsed()?,
-            keep_duration
-        );
         if access_time.elapsed()? > *keep_duration {
             cleaned_file_paths.push(entry.path().to_path_buf());
 
             // Remove only empty directories.
             if metadata.file_type().is_dir() && read_dir(entry.path())?.count() == 0 {
-                remove_dir(entry.path())?;
+                match remove_dir(entry.path()) {
+                    Ok(_) => info!("Successfuly removed: {:?}", entry.path()),
+                    Err(e) => warn!("Failed to remove: {:?} {}", entry.path(), e),
+                };
             } else if metadata.file_type().is_file() {
-                remove_file(entry.path())?;
+                match remove_file(entry.path()) {
+                    Ok(_) => info!("Successfuly removed: {:?}", entry.path()),
+                    Err(e) => warn!("Failed to remove: {:?} {}", entry.path(), e),
+                };
             }
         }
     }
@@ -101,6 +141,9 @@ fn main() {
             .expect("Invalid time format");
         let keep_duration = Duration::from_secs(days_to_keep * 24 * 3600);
 
+        let verbose = matches.is_present("verbose");
+        setup_logging(verbose);
+
         // Default to current invocation path.
         let path = match matches.value_of("path") {
             Some(p) => PathBuf::from(p),
@@ -108,8 +151,8 @@ fn main() {
         };
 
         match try_clean_path(&path, &keep_duration) {
-            Ok(paths) => println!("Cleaned paths: \n {:#?}", paths),
-            Err(e) => eprintln!("Failed to clean {:?}: {}", path, e),
+            Ok(_) => {}
+            Err(e) => error!("Failed to clean {:?}: {}", path, e),
         };
     }
 }
