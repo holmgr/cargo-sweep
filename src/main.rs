@@ -11,7 +11,7 @@ use failure::Error;
 use fern::colors::{Color, ColoredLevelConfig};
 use std::{
     env,
-    fs::{read_dir, remove_dir, remove_file},
+    fs::remove_file,
     path::{Path, PathBuf},
     time::Duration,
 };
@@ -104,14 +104,7 @@ fn try_clean_path<'a>(path: &'a Path, keep_duration: &Duration) -> Result<Vec<Pa
         let access_time = metadata.accessed()?;
         if access_time.elapsed()? > *keep_duration {
             cleaned_file_paths.push(entry.path().to_path_buf());
-
-            // Remove only empty directories.
-            if metadata.file_type().is_dir() && read_dir(entry.path())?.count() == 0 {
-                match remove_dir(entry.path()) {
-                    Ok(_) => info!("Successfuly removed: {:?}", entry.path()),
-                    Err(e) => warn!("Failed to remove: {:?} {}", entry.path(), e),
-                };
-            } else if metadata.file_type().is_file() {
+            if metadata.file_type().is_file() {
                 match remove_file(entry.path()) {
                     Ok(_) => info!("Successfuly removed: {:?}", entry.path()),
                     Err(e) => warn!("Failed to remove: {:?} {}", entry.path(), e),
