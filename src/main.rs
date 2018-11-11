@@ -4,6 +4,7 @@ extern crate failure;
 extern crate walkdir;
 #[macro_use]
 extern crate log;
+extern crate cargo_metadata;
 extern crate fern;
 
 use clap::{App, Arg, SubCommand};
@@ -58,14 +59,11 @@ fn is_cargo_root(path: &Path) -> bool {
 
     // Check that cargo.toml exists.
     path.push("Cargo.toml");
-    if !path.as_path().exists() {
-        return false;
+    if let Ok(metadata) = cargo_metadata::metadata(Some(path.as_path())) {
+        Path::new(&metadata.target_directory).exists()
+    } else {
+        false
     }
-
-    // Check that target dir exists.
-    path.pop();
-    path.push("target/");
-    path.as_path().exists()
 }
 
 /// Find all cargo project under the given root path.
