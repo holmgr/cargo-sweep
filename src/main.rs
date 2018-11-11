@@ -88,8 +88,13 @@ fn find_cargo_projects(root: &Path) -> Vec<PathBuf> {
 
 /// Attempts to sweep the cargo project lookated at the given path,
 /// keeping only files which have been accessed within the given duration.
+/// Dry specifies if files should actually be removed or not.
 /// Returns a list of the deleted file/dir paths.
-fn try_clean_path<'a>(path: &'a Path, keep_duration: &Duration) -> Result<Vec<PathBuf>, Error> {
+fn try_clean_path<'a>(
+    path: &'a Path,
+    keep_duration: &Duration,
+    dry_run: bool,
+) -> Result<Vec<PathBuf>, Error> {
     let mut cleaned_file_paths = vec![];
 
     let mut target_path = path.to_path_buf();
@@ -104,7 +109,7 @@ fn try_clean_path<'a>(path: &'a Path, keep_duration: &Duration) -> Result<Vec<Pa
         let access_time = metadata.accessed()?;
         if access_time.elapsed()? > *keep_duration {
             cleaned_file_paths.push(entry.path().to_path_buf());
-            if metadata.file_type().is_file() {
+            if !dry_run && metadata.file_type().is_file() {
                 match remove_file(entry.path()) {
                     Ok(_) => info!("Successfuly removed: {:?}", entry.path()),
                     Err(e) => warn!("Failed to remove: {:?} {}", entry.path(), e),
@@ -131,6 +136,10 @@ fn main() {
                     Arg::with_name("recursive")
                         .short("r")
                         .help("Apply on all projects below the given path"),
+                ).arg(
+                    Arg::with_name("dry-run")
+                        .short("d")
+                        .help("Dry run which will not delete any files"),
                 ).arg(
                     Arg::with_name("time")
                         .short("t")
@@ -159,6 +168,8 @@ fn main() {
         let verbose = matches.is_present("verbose");
         setup_logging(verbose);
 
+        let dry_run = matches.is_present("dry-run");
+
         // Default to current invocation path.
         let path = match matches.value_of("path") {
             Some(p) => PathBuf::from(p),
@@ -167,13 +178,15 @@ fn main() {
 
         if matches.is_present("recursive") {
             for project_path in find_cargo_projects(&path) {
-                match try_clean_path(&project_path, &keep_duration) {
+                match try_clean_path(&project_path, &keep_duration, dry_run) {
+                    Ok(ref files) if dry_run => println!("{:#?}", files),
                     Ok(_) => {}
                     Err(e) => error!("Failed to clean {:?}: {}", path, e),
                 };
             }
         } else {
-            match try_clean_path(&path, &keep_duration) {
+            match try_clean_path(&path, &keep_duration, dry_run) {
+                Ok(ref files) if dry_run => println!("{:#?}", files),
                 Ok(_) => {}
                 Err(e) => error!("Failed to clean {:?}: {}", path, e),
             };
