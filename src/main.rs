@@ -6,8 +6,12 @@ extern crate walkdir;
 extern crate log;
 extern crate cargo_metadata;
 extern crate fern;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
+extern crate serde_json;
 
-use clap::{App, Arg, SubCommand};
+use clap::{App, Arg, ArgGroup, SubCommand};
 use failure::Error;
 use fern::colors::{Color, ColoredLevelConfig};
 use std::{
@@ -17,6 +21,9 @@ use std::{
     time::Duration,
 };
 use walkdir::WalkDir;
+
+mod stamp;
+use self::stamp::Timestamp;
 
 /// Setup logging according to verbose flag.
 fn setup_logging(verbose: bool) {
@@ -139,12 +146,25 @@ fn main() {
                         .short("d")
                         .help("Dry run which will not delete any files"),
                 ).arg(
+                    Arg::with_name("stamp")
+                        .short("s")
+                        .long("stamp")
+                        .help("Store timestamp file at the given path, is used by file option"),
+                ).arg(
+                    Arg::with_name("file")
+                        .short("f")
+                        .long("file")
+                        .help("Load timestamp file in the given path, cleaning everything older"),
+                ).arg(
                     Arg::with_name("time")
                         .short("t")
                         .long("time")
                         .value_name("days")
                         .help("Number of days to backwards to keep")
-                        .takes_value(true)
+                        .takes_value(true),
+                ).group(
+                    ArgGroup::with_name("timestamp")
+                        .args(&["stamp", "file", "time"])
                         .required(true),
                 ).arg(
                     Arg::with_name("path")
@@ -155,14 +175,6 @@ fn main() {
         ).get_matches();
 
     if let Some(matches) = matches.subcommand_matches("sweep") {
-        // First unwrap is safe due to clap check.
-        let days_to_keep: u64 = matches
-            .value_of("time")
-            .unwrap()
-            .parse()
-            .expect("Invalid time format");
-        let keep_duration = Duration::from_secs(days_to_keep * 24 * 3600);
-
         let verbose = matches.is_present("verbose");
         setup_logging(verbose);
 
@@ -173,6 +185,26 @@ fn main() {
             Some(p) => PathBuf::from(p),
             None => env::current_dir().expect("Failed to get current directory"),
         };
+
+        let keep_duration = if matches.is_present("file") {
+            let ts = Timestamp::load(path.as_path()).expect("Failed to load timestamp file");
+            Duration::from(ts)
+        } else {
+            let days_to_keep: u64 = matches
+                .value_of("time")
+                .unwrap_or("30")
+                .parse()
+                .expect("Invalid time format");
+            Duration::from_secs(days_to_keep * 24 * 3600)
+        };
+
+        if matches.is_present("stamp") {
+            debug!("Writing timestamp file in: {:?}", path);
+            match Timestamp::new().store(path.as_path()) {
+                Ok(_) => {}
+                Err(e) => error!("Failed to write timestamp file: {}", e),
+            }
+        }
 
         if matches.is_present("recursive") {
             for project_path in find_cargo_projects(&path) {

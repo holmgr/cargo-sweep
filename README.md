@@ -22,6 +22,16 @@ You can also specify a path instead of defaulting to the current directory:
 cargo sweep -t 30 <path>
 ```
 
+To clean everything but the latest build you will need to run it in several steps
+```
+cargo sweep -s
+
+<Insert cargo-build, cargo test etc...>
+
+cargo sweep -f
+```
+The first step generates a timestamp file which will be used to clean everything that was not used between it and the next time the file (-f) option is used.
+
 Finally, you can recursivly clean all cargo project below a given path by adding the `-r` flag, for instance:
 
 ```
