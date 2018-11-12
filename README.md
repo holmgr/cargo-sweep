@@ -22,6 +22,12 @@ You can also specify a path instead of defaulting to the current directory:
 cargo sweep -t 30 <path>
 ```
 
+To preview the results of a sweep run add the `-d` flag, for instance:
+
+```
+cargo sweep -d -t 30
+```
+
 To clean everything but the latest build you will need to run it in several steps
 ```
 cargo sweep -s
