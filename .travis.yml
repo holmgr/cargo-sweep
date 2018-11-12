@@ -1,0 +1,49 @@
+dist: trusty
+language: rust
+services: docker
+sudo: required
+env:
+  global:
+  - CRATE_NAME=cargo-sweep
+matrix:
+  include:
+  - env: TARGET=x86_64-pc-windows-gnu
+  - env: TARGET=x86_64-unknown-linux-gnu
+  - env: TARGET=x86_64-unknown-linux-gnu
+    rust: nightly
+  - env: TARGET=x86_64-apple-darwin
+    os: osx
+  - env: TARGET=x86_64-apple-darwin
+    os: osx
+    rust: nightly
+before_install:
+- set -e
+- rustup self update
+install:
+- sh ci/install.sh
+- source ~/.cargo/env || true
+script:
+- bash ci/script.sh
+after_script: set +e
+before_deploy:
+- sh ci/before_deploy.sh
+deploy:
+  api_key:
+    secure: kfcUFWGJWQYLikOCLp/5ZxYVDdTRzB9xwQNXjTA8RPxbRlyyce2LaZNaU18S1sMyZRUbeM+YDyNr328fi5I0yTDyoPsNC7eFbLs6mr/pnCQQaErqoopcg5hlQ/3N2h59Kwl0gWBjd2h+JRmaSlvgQjQFCBLWszpAFyZhLbQ1iQLBUhCMP/cTWXs/jAxmC/dXXGppr2oyGnGOOaqKDNUJyCQK5XUbHEsWwMkfBHTg3+EBYL4wHK3oC+fqkshyRRB/8GCXYFxw0rzu3BVAJac8WIpajBiCooLq2dP3GqMY9X9xdYwYf88hs2+zVD6ZqI/VlGyf8DrkqusitsNNeCwjVtr3xsu1S97Qp8hjejOdGT2LEZVwffo1q8Yu52eaoPX2/T7D93hbdBbUwzR1e1YLdPBOdfq1iRcoGNnWv0rF3Pq19lYxAKFtCJZGrN9nopjoUR81szwGSpmAp4UT8qfHuFBGsuTGNX86AxLDXuvoHlLJ32MZnIT/X3SSqVcz/NRDqXQxfhnvi+8eEvgr8ROreCV2QLUohmbkFkygJHg6MgEEQgZidyT3G+PuDuHjiEx6yc5u5G5gc1032O0qCVxmOVGOlZUrr+i+81GPRgegyTpq+jb8+nOrKqOZBGrWdpsBHVbClSq0XQiKhgyGzi2fR8FFVdlIFqlGH334+kq6AMo=
+  file_glob: true
+  file: "$CRATE_NAME-$TRAVIS_TAG-$TARGET.*"
+  on:
+    condition: "$TRAVIS_RUST_VERSION = stable"
+    tags: true
+  provider: releases
+  skip_cleanup: true
+cache: cargo
+before_cache:
+- chmod -R a+r $HOME/.cargo
+branches:
+  only:
+  - "/^v\\d+\\.\\d+\\.\\d+.*$/"
+  - master
+notifications:
+  email:
+    on_success: never
