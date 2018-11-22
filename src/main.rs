@@ -23,7 +23,9 @@ use std::{
 use walkdir::WalkDir;
 
 mod stamp;
+mod util;
 use self::stamp::Timestamp;
+use self::util::format_bytes;
 
 /// Setup logging according to verbose flag.
 fn setup_logging(verbose: bool) {
@@ -99,7 +101,8 @@ fn try_clean_path<'a>(
     path: &'a Path,
     keep_duration: &Duration,
     dry_run: bool,
-) -> Result<(), Error> {
+) -> Result<(u64), Error> {
+    let mut total_disk_space = 0;
     let mut target_path = path.to_path_buf();
     target_path.push("target/");
     for entry in WalkDir::new(target_path.to_str().unwrap())
@@ -111,19 +114,19 @@ fn try_clean_path<'a>(
         let metadata = entry.metadata()?;
         let access_time = metadata.accessed()?;
         if access_time.elapsed()? > *keep_duration && metadata.file_type().is_file() {
+            total_disk_space += metadata.len();
             if !dry_run {
                 match remove_file(entry.path()) {
                     Ok(_) => info!("Successfuly removed: {:?}", entry.path()),
                     Err(e) => warn!("Failed to remove: {:?} {}", entry.path(), e),
                 };
-            }
-            else {
+            } else {
                 info!("Would remove: {:?}", entry.path());
             }
         }
     }
 
-    Ok(())
+    Ok(total_disk_space)
 }
 
 fn main() {
@@ -209,13 +212,19 @@ fn main() {
         if matches.is_present("recursive") {
             for project_path in find_cargo_projects(&path) {
                 match try_clean_path(&project_path, &keep_duration, dry_run) {
-                    Ok(_) => {}
+                    Ok(cleaned_amount) if dry_run => {
+                        info!("Would clean: {}", format_bytes(cleaned_amount))
+                    }
+                    Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
                     Err(e) => error!("Failed to clean {:?}: {}", path, e),
                 };
             }
         } else {
             match try_clean_path(&path, &keep_duration, dry_run) {
-                Ok(_) => {}
+                Ok(cleaned_amount) if dry_run => {
+                    info!("Would clean: {}", format_bytes(cleaned_amount))
+                }
+                Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
                 Err(e) => error!("Failed to clean {:?}: {}", path, e),
             };
         }
