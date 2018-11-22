@@ -38,7 +38,7 @@ fn setup_logging(verbose: bool) {
     let level = if verbose {
         log::LevelFilter::Debug
     } else {
-        log::LevelFilter::Warn
+        log::LevelFilter::Info
     };
 
     let colors_level = colors_line.info(Color::Green);
