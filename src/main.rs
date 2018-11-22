@@ -99,9 +99,7 @@ fn try_clean_path<'a>(
     path: &'a Path,
     keep_duration: &Duration,
     dry_run: bool,
-) -> Result<Vec<PathBuf>, Error> {
-    let mut cleaned_file_paths = vec![];
-
+) -> Result<(), Error> {
     let mut target_path = path.to_path_buf();
     target_path.push("target/");
     for entry in WalkDir::new(target_path.to_str().unwrap())
@@ -112,18 +110,20 @@ fn try_clean_path<'a>(
     {
         let metadata = entry.metadata()?;
         let access_time = metadata.accessed()?;
-        if access_time.elapsed()? > *keep_duration {
-            cleaned_file_paths.push(entry.path().to_path_buf());
-            if !dry_run && metadata.file_type().is_file() {
+        if access_time.elapsed()? > *keep_duration && metadata.file_type().is_file() {
+            if !dry_run {
                 match remove_file(entry.path()) {
                     Ok(_) => info!("Successfuly removed: {:?}", entry.path()),
                     Err(e) => warn!("Failed to remove: {:?} {}", entry.path(), e),
                 };
             }
+            else {
+                info!("Would remove: {:?}", entry.path());
+            }
         }
     }
 
-    Ok(cleaned_file_paths)
+    Ok(())
 }
 
 fn main() {
@@ -209,14 +209,12 @@ fn main() {
         if matches.is_present("recursive") {
             for project_path in find_cargo_projects(&path) {
                 match try_clean_path(&project_path, &keep_duration, dry_run) {
-                    Ok(ref files) if dry_run => println!("{:#?}", files),
                     Ok(_) => {}
                     Err(e) => error!("Failed to clean {:?}: {}", path, e),
                 };
             }
         } else {
             match try_clean_path(&path, &keep_duration, dry_run) {
-                Ok(ref files) if dry_run => println!("{:#?}", files),
                 Ok(_) => {}
                 Err(e) => error!("Failed to clean {:?}: {}", path, e),
             };
