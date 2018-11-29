@@ -1,4 +1,5 @@
 use failure::Error;
+use serde_json::{from_str, to_string};
 use std::{
     fs::{remove_file, File},
     io::prelude::*,
@@ -21,7 +22,7 @@ impl Timestamp {
         let mut path = target_dir.to_path_buf();
         path.push("sweep.timestamp");
         let mut file = File::create(path)?;
-        file.write_all(serde_json::to_string(&self)?.as_bytes())?;
+        file.write_all(to_string(&self)?.as_bytes())?;
         Ok(())
     }
 
@@ -33,7 +34,7 @@ impl Timestamp {
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
         remove_file(&path)?;
-        let timestamp: Timestamp = serde_json::from_str(&contents)?;
+        let timestamp: Timestamp = from_str(&contents)?;
         Ok(timestamp)
     }
 }
