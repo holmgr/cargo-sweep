@@ -46,7 +46,7 @@ cargo sweep -f
 ```
 The first step generates a timestamp file which will be used to clean everything that was not used between it and the next time the file (-f) option is used.
 
-Finally, you can recursivly clean all cargo project below a given path by adding the `-r` flag, for instance:
+Finally, you can recursively clean all cargo project below a given path by adding the `-r` flag, for instance:
 
 ```
 cargo sweep -r -t 30 code/github.com/holmgr/
