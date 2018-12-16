@@ -55,7 +55,8 @@ fn setup_logging(verbose: bool) {
                 level = colors_level.color(record.level()),
                 message = message,
             ));
-        }).level(level)
+        })
+        .level(level)
         .level_for("pretty_colored", log::LevelFilter::Trace)
         .chain(std::io::stdout())
         .apply()
@@ -140,42 +141,50 @@ fn main() {
                     Arg::with_name("verbose")
                         .short("v")
                         .help("Turn verbose information on"),
-                ).arg(
+                )
+                .arg(
                     Arg::with_name("recursive")
                         .short("r")
                         .help("Apply on all projects below the given path"),
-                ).arg(
+                )
+                .arg(
                     Arg::with_name("dry-run")
                         .short("d")
                         .help("Dry run which will not delete any files"),
-                ).arg(
+                )
+                .arg(
                     Arg::with_name("stamp")
                         .short("s")
                         .long("stamp")
                         .help("Store timestamp file at the given path, is used by file option"),
-                ).arg(
+                )
+                .arg(
                     Arg::with_name("file")
                         .short("f")
                         .long("file")
                         .help("Load timestamp file in the given path, cleaning everything older"),
-                ).arg(
+                )
+                .arg(
                     Arg::with_name("time")
                         .short("t")
                         .long("time")
                         .value_name("days")
                         .help("Number of days to backwards to keep")
                         .takes_value(true),
-                ).group(
+                )
+                .group(
                     ArgGroup::with_name("timestamp")
                         .args(&["stamp", "file", "time"])
                         .required(true),
-                ).arg(
+                )
+                .arg(
                     Arg::with_name("path")
                         .index(1)
                         .value_name("path")
                         .help("Path to check"),
                 ),
-        ).get_matches();
+        )
+        .get_matches();
 
     if let Some(matches) = matches.subcommand_matches("sweep") {
         let verbose = matches.is_present("verbose");
