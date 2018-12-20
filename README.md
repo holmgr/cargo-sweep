@@ -24,6 +24,24 @@ To clean all build files older than 30 days in the local cargo project run:
 cargo sweep -t 30
 ```
 
+To clean all build files not made by the currently installed (by rustup) nightly compiler:
+
+```
+cargo sweep --toolchains="nightly"
+```
+
+This can be useful if you checked that your library works on stable, but mostly develop on nightly.
+
+
+To clean all build files not made by any of the currently installed (by rustup) compilers:
+
+```
+cargo sweep -i
+```
+
+This can be useful if you just updated your compilers with a `rustup update`.
+
+
 To preview the results of a sweep run, which is recommended as a first step, add the `-d` flag, for instance:
 
 ```
@@ -38,7 +56,7 @@ cargo sweep -t 30 <path>
 
 To clean everything but the latest build you will need to run it in several steps.
 
-**DEPRICATED** This behavior can be too agressive, since cargo can skip reading files when building a near-identical build, see #2 and #11. Also, this will be replaced once `build-plan` is stabilized in cargo.
+**DEPRICATED** This behavior can be too aggressive, since cargo can skip reading files when building a near-identical build, see #2 and #11. Also, this will be replaced once `build-plan` is stabilized in cargo.
 
 ```
 cargo sweep -s

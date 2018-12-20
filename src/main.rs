@@ -14,6 +14,7 @@ extern crate serde_json;
 use clap::{App, Arg, ArgGroup, SubCommand};
 use failure::Error;
 use fern::colors::{Color, ColoredLevelConfig};
+use rust_version::remove_not_built_with;
 use std::{
     env,
     fs::remove_file,
@@ -22,6 +23,7 @@ use std::{
 };
 use walkdir::WalkDir;
 
+mod rust_version;
 mod stamp;
 mod util;
 use self::stamp::Timestamp;
@@ -98,14 +100,14 @@ fn find_cargo_projects(root: &Path) -> Vec<PathBuf> {
 /// keeping only files which have been accessed within the given duration.
 /// Dry specifies if files should actually be removed or not.
 /// Returns a list of the deleted file/dir paths.
-fn try_clean_path<'a>(
-    path: &'a Path,
+fn try_clean_path(
+    path: &Path,
     keep_duration: &Duration,
     dry_run: bool,
 ) -> Result<(u64), Error> {
     let mut total_disk_space = 0;
     let mut target_path = path.to_path_buf();
-    target_path.push("target/");
+    target_path.push("target");
     for entry in WalkDir::new(target_path.to_str().unwrap())
         .min_depth(1)
         .contents_first(true)
@@ -118,7 +120,7 @@ fn try_clean_path<'a>(
             total_disk_space += metadata.len();
             if !dry_run {
                 match remove_file(entry.path()) {
-                    Ok(_) => info!("Successfuly removed: {:?}", entry.path()),
+                    Ok(_) => info!("Successfully removed: {:?}", entry.path()),
                     Err(e) => warn!("Failed to remove: {:?} {}", entry.path(), e),
                 };
             } else {
@@ -130,6 +132,7 @@ fn try_clean_path<'a>(
     Ok(total_disk_space)
 }
 
+#[allow(clippy::cyclomatic_complexity)]
 fn main() {
     let matches = App::new("Cargo sweep")
         .version("0.1")
@@ -165,16 +168,29 @@ fn main() {
                         .help("Load timestamp file in the given path, cleaning everything older"),
                 )
                 .arg(
+                    Arg::with_name("installed")
+                        .short("i")
+                        .long("installed")
+                        .help("Keep only artefacts made by Toolchains currently installed by rustup")
+                )
+                .arg(
+                    Arg::with_name("toolchains")
+                        .long("toolchains")
+                        .value_name("toolchains")
+                        .help("Toolchains (currently installed by rustup) that shuld have there artefacts kept.")
+                        .takes_value(true),
+                )
+                .arg(
                     Arg::with_name("time")
                         .short("t")
                         .long("time")
                         .value_name("days")
-                        .help("Number of days to backwards to keep")
+                        .help("Number of days backwards to keep. If no value is set uses 30.")
                         .takes_value(true),
                 )
                 .group(
                     ArgGroup::with_name("timestamp")
-                        .args(&["stamp", "file", "time"])
+                        .args(&["stamp", "file", "time", "installed", "toolchains"])
                         .required(true),
                 )
                 .arg(
@@ -216,6 +232,30 @@ fn main() {
                 Ok(_) => {}
                 Err(e) => error!("Failed to write timestamp file: {}", e),
             }
+            return;
+        }
+
+        if matches.is_present("installed") || matches.is_present("toolchains") {
+            if matches.is_present("recursive") {
+                for project_path in find_cargo_projects(&path) {
+                    match remove_not_built_with(&project_path, matches.value_of("toolchains"), dry_run) {
+                        Ok(cleaned_amount) if dry_run => {
+                            info!("Would clean: {}", format_bytes(cleaned_amount))
+                        }
+                        Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
+                        Err(e) => error!("Failed to clean {:?}: {}", path, e),
+                    };
+                }
+            } else {
+                match remove_not_built_with(&path, matches.value_of("toolchains"), dry_run) {
+                    Ok(cleaned_amount) if dry_run => {
+                        info!("Would clean: {}", format_bytes(cleaned_amount))
+                    }
+                    Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
+                    Err(e) => error!("Failed to clean {:?}: {}", path, e),
+                };
+            }
+            return;
         }
 
         if matches.is_present("recursive") {
