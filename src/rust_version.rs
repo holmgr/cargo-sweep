@@ -232,18 +232,3 @@ pub fn remove_not_built_with(
     }
     Ok(total_disk_space)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_rustup_toolchain_list_runs() {
-        rustup_toolchain_list().unwrap();
-    }
-
-    #[test]
-    fn test_lookup_from_rustup_runs() {
-        lookup_from_names(rustup_toolchain_list().unwrap().iter().map(|x| x.as_str())).unwrap();
-    }
-}
