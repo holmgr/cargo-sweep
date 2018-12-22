@@ -12,12 +12,13 @@ extern crate serde;
 extern crate serde_json;
 
 use clap::{App, Arg, ArgGroup, SubCommand};
-use failure::Error;
 use fern::colors::{Color, ColoredLevelConfig};
-use rust_version::remove_not_built_with;
+use rust_version::{
+    remove_not_built_with,
+    remove_older_then
+};
 use std::{
     env,
-    fs::remove_file,
     path::{Path, PathBuf},
     time::Duration,
 };
@@ -94,42 +95,6 @@ fn find_cargo_projects(root: &Path) -> Vec<PathBuf> {
         }
     }
     project_paths
-}
-
-/// Attempts to sweep the cargo project lookated at the given path,
-/// keeping only files which have been accessed within the given duration.
-/// Dry specifies if files should actually be removed or not.
-/// Returns a list of the deleted file/dir paths.
-fn try_clean_path(
-    path: &Path,
-    keep_duration: &Duration,
-    dry_run: bool,
-) -> Result<(u64), Error> {
-    let mut total_disk_space = 0;
-    let mut target_path = path.to_path_buf();
-    target_path.push("target");
-    for entry in WalkDir::new(target_path.to_str().unwrap())
-        .min_depth(1)
-        .contents_first(true)
-        .into_iter()
-        .filter_map(|e| e.ok())
-    {
-        let metadata = entry.metadata()?;
-        let access_time = metadata.accessed()?;
-        if access_time.elapsed()? > *keep_duration && metadata.file_type().is_file() {
-            total_disk_space += metadata.len();
-            if !dry_run {
-                match remove_file(entry.path()) {
-                    Ok(_) => info!("Successfully removed: {:?}", entry.path()),
-                    Err(e) => warn!("Failed to remove: {:?} {}", entry.path(), e),
-                };
-            } else {
-                info!("Would remove: {:?}", entry.path());
-            }
-        }
-    }
-
-    Ok(total_disk_space)
 }
 
 #[allow(clippy::cyclomatic_complexity)]
@@ -238,7 +203,11 @@ fn main() {
         if matches.is_present("installed") || matches.is_present("toolchains") {
             if matches.is_present("recursive") {
                 for project_path in find_cargo_projects(&path) {
-                    match remove_not_built_with(&project_path, matches.value_of("toolchains"), dry_run) {
+                    match remove_not_built_with(
+                        &project_path,
+                        matches.value_of("toolchains"),
+                        dry_run,
+                    ) {
                         Ok(cleaned_amount) if dry_run => {
                             info!("Would clean: {}", format_bytes(cleaned_amount))
                         }
@@ -260,7 +229,7 @@ fn main() {
 
         if matches.is_present("recursive") {
             for project_path in find_cargo_projects(&path) {
-                match try_clean_path(&project_path, &keep_duration, dry_run) {
+                match remove_older_then(&project_path, &keep_duration, dry_run) {
                     Ok(cleaned_amount) if dry_run => {
                         info!("Would clean: {}", format_bytes(cleaned_amount))
                     }
@@ -269,7 +238,7 @@ fn main() {
                 };
             }
         } else {
-            match try_clean_path(&path, &keep_duration, dry_run) {
+            match remove_older_then(&path, &keep_duration, dry_run) {
                 Ok(cleaned_amount) if dry_run => {
                     info!("Would clean: {}", format_bytes(cleaned_amount))
                 }

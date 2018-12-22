@@ -4,6 +4,7 @@ use serde_json::from_str;
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher, SipHasher};
 use std::process::Command;
+use std::time::Duration;
 use std::{
     fs::{self, remove_dir_all, remove_file, File},
     io::prelude::*,
@@ -67,7 +68,7 @@ impl Fingerprint {
     }
 }
 
-fn load_all_fingerprint(
+fn load_all_fingerprints_built_with(
     fingerprint_dir: &Path,
     instaled_rustc: &HashSet<u64>,
 ) -> Result<HashSet<String>, Error> {
@@ -88,6 +89,41 @@ fn load_all_fingerprint(
                 if let Some(hash) = hash_from_path_name(&name) {
                     keep.insert(hash.to_string());
                 }
+            }
+        }
+    }
+    debug!("Hashs to keep: {:#?}", keep);
+    Ok(keep)
+}
+
+fn last_used_time(fingerprint_dir: &Path) -> Result<Duration, Error> {
+    let mut best = Duration::from_secs(3_155_760_000); // 100 years!
+    for entry in fs::read_dir(fingerprint_dir)? {
+        let accessed = entry?.metadata()?.accessed()?.elapsed()?;
+        if accessed < best {
+            best = accessed;
+        }
+    }
+    Ok(best)
+}
+
+fn load_all_fingerprints_newer_then(
+    fingerprint_dir: &Path,
+    keep_duration: &Duration,
+) -> Result<HashSet<String>, Error> {
+    assert_eq!(
+        fingerprint_dir
+            .file_name()
+            .expect("load takes the path to a .fingerprint directory"),
+        ".fingerprint"
+    );
+    let mut keep = HashSet::new();
+    for entry in fs::read_dir(fingerprint_dir)? {
+        let path = entry?.path();
+        if path.is_dir() && last_used_time(&path)? < *keep_duration {
+            let name = path.file_name().unwrap().to_string_lossy();
+            if let Some(hash) = hash_from_path_name(&name) {
+                keep.insert(hash.to_string());
             }
         }
     }
@@ -149,11 +185,10 @@ fn remove_not_matching_in_a_dir(
 
 fn remove_not_built_with_in_a_profile(
     dir: &Path,
-    hashed_rust_vertion_to_keep: &HashSet<u64>,
+    keep: &HashSet<String>,
     dry_run: bool,
 ) -> Result<u64, Error> {
     let mut total_disk_space = 0;
-    let keep = load_all_fingerprint(&dir.join(".fingerprint"), hashed_rust_vertion_to_keep)?;
     total_disk_space += remove_not_matching_in_a_dir(&dir.join(".fingerprint"), &keep, dry_run)?;
     total_disk_space += remove_not_matching_in_a_dir(&dir.join("build"), &keep, dry_run)?;
     total_disk_space += remove_not_matching_in_a_dir(&dir.join("deps"), &keep, dry_run)?;
@@ -224,11 +259,31 @@ pub fn remove_not_built_with(
         lookup_from_names(rustup_toolchain_list.iter().map(|x| x.as_str()))?
     };
     for fing in lookup_all_fingerprint_dirs(&dir.join("target")) {
-        total_disk_space += remove_not_built_with_in_a_profile(
-            fing.into_path().parent().unwrap(),
-            &hashed_rust_version_to_keep,
-            dry_run,
-        )?;
+        let path = fing.into_path();
+        let keep = load_all_fingerprints_built_with(&path, &hashed_rust_version_to_keep)?;
+        total_disk_space +=
+            remove_not_built_with_in_a_profile(path.parent().unwrap(), &keep, dry_run)?;
     }
+    Ok(total_disk_space)
+}
+
+/// Attempts to sweep the cargo project lookated at the given path,
+/// keeping only files which have been accessed within the given duration.
+/// Dry specifies if files should actually be removed or not.
+/// Returns a list of the deleted file/dir paths.
+pub fn remove_older_then(
+    path: &Path,
+    keep_duration: &Duration,
+    dry_run: bool,
+) -> Result<u64, Error> {
+    let mut total_disk_space = 0;
+
+    for fing in lookup_all_fingerprint_dirs(&path.join("target")) {
+        let path = fing.into_path();
+        let keep = load_all_fingerprints_newer_then(&path, &keep_duration)?;
+        total_disk_space +=
+            remove_not_built_with_in_a_profile(path.parent().unwrap(), &keep, dry_run)?;
+    }
+
     Ok(total_disk_space)
 }
