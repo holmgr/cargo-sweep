@@ -13,7 +13,7 @@ extern crate serde_json;
 
 use clap::{App, Arg, ArgGroup, SubCommand};
 use fern::colors::{Color, ColoredLevelConfig};
-use rust_version::{
+use fingerprint::{
     remove_not_built_with,
     remove_older_then
 };
@@ -24,7 +24,7 @@ use std::{
 };
 use walkdir::WalkDir;
 
-mod rust_version;
+mod fingerprint;
 mod stamp;
 mod util;
 use self::stamp::Timestamp;
