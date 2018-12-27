@@ -56,12 +56,10 @@ cargo sweep -t 30 <path>
 
 To clean everything but the latest build you will need to run it in several steps.
 
-**DEPRICATED** This behavior can be too aggressive, since cargo can skip reading files when building a near-identical build, see #2 and #11. Also, this will be replaced once `build-plan` is stabilized in cargo.
-
 ```
 cargo sweep -s
 
-<Insert cargo-build, cargo test etc...>
+<Insert any number of cargo build, cargo test etc...>
 
 cargo sweep -f
 ```
