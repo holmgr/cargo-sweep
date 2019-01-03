@@ -188,6 +188,10 @@ fn remove_not_built_with_in_a_profile(
     keep: &HashSet<String>,
     dry_run: bool,
 ) -> Result<u64, Error> {
+    debug!(
+        "cleaning: {:?} with remove_not_built_with_in_a_profile",
+        dir
+    );
     let mut total_disk_space = 0;
     total_disk_space += remove_not_matching_in_a_dir(&dir.join(".fingerprint"), &keep, dry_run)?;
     total_disk_space += remove_not_matching_in_a_dir(&dir.join("build"), &keep, dry_run)?;
@@ -243,6 +247,7 @@ pub fn remove_not_built_with(
     rust_vertion_to_keep: Option<&str>,
     dry_run: bool,
 ) -> Result<u64, Error> {
+    debug!("cleaning: {:?} with remove_not_built_with", dir);
     let mut total_disk_space = 0;
     let hashed_rust_version_to_keep = if let Some(names) = rust_vertion_to_keep {
         info!(
@@ -276,6 +281,7 @@ pub fn remove_older_then(
     keep_duration: &Duration,
     dry_run: bool,
 ) -> Result<u64, Error> {
+    debug!("cleaning: {:?} with remove_older_then", path);
     let mut total_disk_space = 0;
 
     for fing in lookup_all_fingerprint_dirs(&path.join("target")) {
