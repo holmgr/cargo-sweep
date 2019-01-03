@@ -13,10 +13,7 @@ extern crate serde_json;
 
 use clap::{App, Arg, ArgGroup, SubCommand};
 use fern::colors::{Color, ColoredLevelConfig};
-use fingerprint::{
-    remove_not_built_with,
-    remove_older_then
-};
+use fingerprint::{remove_not_built_with, remove_older_then};
 use std::{
     env,
     path::{Path, PathBuf},
@@ -97,7 +94,6 @@ fn find_cargo_projects(root: &Path) -> Vec<PathBuf> {
     project_paths
 }
 
-#[allow(clippy::cyclomatic_complexity)]
 fn main() {
     let matches = App::new("Cargo sweep")
         .version("0.1")
@@ -200,50 +196,33 @@ fn main() {
             return;
         }
 
+        let paths = if matches.is_present("recursive") {
+            find_cargo_projects(&path)
+        } else {
+            vec![path]
+        };
+
         if matches.is_present("installed") || matches.is_present("toolchains") {
-            if matches.is_present("recursive") {
-                for project_path in find_cargo_projects(&path) {
-                    match remove_not_built_with(
-                        &project_path,
-                        matches.value_of("toolchains"),
-                        dry_run,
-                    ) {
-                        Ok(cleaned_amount) if dry_run => {
-                            info!("Would clean: {}", format_bytes(cleaned_amount))
-                        }
-                        Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
-                        Err(e) => error!("Failed to clean {:?}: {}", path, e),
-                    };
-                }
-            } else {
-                match remove_not_built_with(&path, matches.value_of("toolchains"), dry_run) {
+            for project_path in &paths {
+                match remove_not_built_with(project_path, matches.value_of("toolchains"), dry_run) {
                     Ok(cleaned_amount) if dry_run => {
                         info!("Would clean: {}", format_bytes(cleaned_amount))
                     }
                     Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
-                    Err(e) => error!("Failed to clean {:?}: {}", path, e),
+                    Err(e) => error!("Failed to clean {:?}: {}", project_path, e),
                 };
             }
+
             return;
         }
 
-        if matches.is_present("recursive") {
-            for project_path in find_cargo_projects(&path) {
-                match remove_older_then(&project_path, &keep_duration, dry_run) {
-                    Ok(cleaned_amount) if dry_run => {
-                        info!("Would clean: {}", format_bytes(cleaned_amount))
-                    }
-                    Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
-                    Err(e) => error!("Failed to clean {:?}: {}", path, e),
-                };
-            }
-        } else {
-            match remove_older_then(&path, &keep_duration, dry_run) {
+        for project_path in &paths {
+            match remove_older_then(project_path, &keep_duration, dry_run) {
                 Ok(cleaned_amount) if dry_run => {
                     info!("Would clean: {}", format_bytes(cleaned_amount))
                 }
                 Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
-                Err(e) => error!("Failed to clean {:?}: {}", path, e),
+                Err(e) => error!("Failed to clean {:?}: {}", project_path, e),
             };
         }
     }
