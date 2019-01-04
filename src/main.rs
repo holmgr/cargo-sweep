@@ -64,12 +64,14 @@ fn setup_logging(verbose: bool) {
 }
 
 /// Returns whether the given path to a Cargo.toml points to a real target directory.
-fn is_cargo_root(path: &Path) -> bool {
+fn is_cargo_root(path: &Path) -> Option<PathBuf> {
     if let Ok(metadata) = cargo_metadata::metadata(Some(path)) {
-        Path::new(&metadata.target_directory).exists()
-    } else {
-        false
+        let out = Path::new(&metadata.target_directory).to_path_buf();
+        if out.exists() {
+            return Some(out);
+        }
     }
+    None
 }
 
 /// Find all cargo project under the given root path.
@@ -82,8 +84,8 @@ fn find_cargo_projects(root: &Path) -> Vec<PathBuf> {
         .filter_map(|e| e.ok())
         .filter(|f| f.file_name() == "Cargo.toml")
     {
-        if is_cargo_root(entry.path()) {
-            project_paths.push(entry.path().parent().to_path_buf());
+        if let Some(target_directory) = is_cargo_root(entry.path()) {
+            project_paths.push(target_directory);
         }
     }
     project_paths
@@ -194,7 +196,7 @@ fn main() {
         let paths = if matches.is_present("recursive") {
             find_cargo_projects(&path)
         } else {
-            vec![path]
+            vec![path.join("target")]
         };
 
         if matches.is_present("installed") || matches.is_present("toolchains") {

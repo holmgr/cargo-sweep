@@ -263,7 +263,7 @@ pub fn remove_not_built_with(
         );
         lookup_from_names(rustup_toolchain_list.iter().map(|x| x.as_str()))?
     };
-    for fing in lookup_all_fingerprint_dirs(&dir.join("target")) {
+    for fing in lookup_all_fingerprint_dirs(dir) {
         let path = fing.into_path();
         let keep = load_all_fingerprints_built_with(&path, &hashed_rust_version_to_keep)?;
         total_disk_space +=
@@ -284,7 +284,7 @@ pub fn remove_older_then(
     debug!("cleaning: {:?} with remove_older_then", path);
     let mut total_disk_space = 0;
 
-    for fing in lookup_all_fingerprint_dirs(&path.join("target")) {
+    for fing in lookup_all_fingerprint_dirs(path) {
         let path = fing.into_path();
         let keep = load_all_fingerprints_newer_then(&path, &keep_duration)?;
         total_disk_space +=
