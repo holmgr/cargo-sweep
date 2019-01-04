@@ -195,8 +195,17 @@ fn main() {
 
         let paths = if matches.is_present("recursive") {
             find_cargo_projects(&path)
+        } else if let Ok(metadata) = cargo_metadata::metadata(None) {
+            let out = Path::new(&metadata.target_directory).to_path_buf();
+            if out.exists() {
+                vec![out]
+            } else {
+                error!("Failed to clean {:?} as it does not exist.", out);
+                return;
+            }
         } else {
-            vec![path.join("target")]
+            error!("Failed to clean {:?} as it is not a cargo project.", path);
+            return;
         };
 
         if matches.is_present("installed") || matches.is_present("toolchains") {
