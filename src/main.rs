@@ -74,13 +74,23 @@ fn is_cargo_root(path: &Path) -> Option<PathBuf> {
     None
 }
 
+/// is a `DirEntry` a unix stile hidden file, ie starts with `.`
+fn is_hidden(entry: &walkdir::DirEntry) -> bool {
+    entry
+        .file_name()
+        .to_str()
+        .map(|s| s.starts_with('.'))
+        .unwrap_or(false)
+}
+
 /// Find all cargo project under the given root path.
-fn find_cargo_projects(root: &Path) -> Vec<PathBuf> {
+fn find_cargo_projects(root: &Path, include_hidden: bool) -> Vec<PathBuf> {
     let mut project_paths = vec![];
     // Sub directories cannot be checked due to internal crates.
     for entry in WalkDir::new(root.to_str().unwrap())
         .min_depth(1)
         .into_iter()
+        .filter_entry(|e| include_hidden || !is_hidden(e))
         .filter_map(|e| e.ok())
         .filter(|f| f.file_name() == "Cargo.toml")
     {
@@ -107,6 +117,13 @@ fn main() {
                     Arg::with_name("recursive")
                         .short("r")
                         .help("Apply on all projects below the given path"),
+                )
+                .arg(
+                    Arg::with_name("hidden")
+                        .long("hidden")
+                        .help("The `recursive` flag defaults to ignoring directories \
+                        that start with a `.`, `.git` for example is unlikely to include a \
+                        Cargo project, this flag changes it to look in them."),
                 )
                 .arg(
                     Arg::with_name("dry-run")
@@ -194,7 +211,7 @@ fn main() {
         }
 
         let paths = if matches.is_present("recursive") {
-            find_cargo_projects(&path)
+            find_cargo_projects(&path, matches.is_present("hidden"))
         } else if let Ok(metadata) = cargo_metadata::metadata(None) {
             let out = Path::new(&metadata.target_directory).to_path_buf();
             if out.exists() {

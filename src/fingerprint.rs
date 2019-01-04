@@ -208,7 +208,12 @@ fn lookup_all_fingerprint_dirs(dir: &Path) -> impl Iterator<Item = DirEntry> {
         .min_depth(1)
         .into_iter()
         .filter_map(|entry| entry.ok())
-        .filter(|p| &p.file_name().to_string_lossy() == ".fingerprint")
+        .filter(|e| {
+            e.file_name()
+                .to_str()
+                .map(|s| s == ".fingerprint")
+                .unwrap_or(false)
+        })
 }
 
 fn lookup_from_names<'a>(iter: impl Iterator<Item = &'a str>) -> Result<HashSet<u64>, Error> {
