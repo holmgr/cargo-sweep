@@ -85,20 +85,36 @@ fn is_hidden(entry: &walkdir::DirEntry) -> bool {
 
 /// Find all cargo project under the given root path.
 fn find_cargo_projects(root: &Path, include_hidden: bool) -> Vec<PathBuf> {
-    let mut project_paths = vec![];
-    // Sub directories cannot be checked due to internal crates.
-    for entry in WalkDir::new(root.to_str().unwrap())
+    let mut target_paths = std::collections::BTreeSet::new();
+
+    let mut iter = WalkDir::new(root)
         .min_depth(1)
-        .into_iter()
-        .filter_entry(|e| include_hidden || !is_hidden(e))
-        .filter_map(|e| e.ok())
-        .filter(|f| f.file_name() == "Cargo.toml")
-    {
-        if let Some(target_directory) = is_cargo_root(entry.path()) {
-            project_paths.push(target_directory);
+        .into_iter();
+
+    while let Some(entry) = iter.next() {
+        if let Ok(entry) = entry {
+            if entry.file_type().is_dir() {
+                if !include_hidden && is_hidden(&entry) {
+                    iter.skip_current_dir();
+                    continue;
+                }
+                if entry.path().ancestors().any(|a| target_paths.contains(a)) {
+                    // no reason to look at the contents of something we are already cleaning.
+                    // Yes ancestors is a inefficient way to check. We can use a trie or something if it is slow.
+                    iter.skip_current_dir();
+                    continue;
+                }
+            }
+            if entry.file_name() != "Cargo.toml" {
+                continue;
+            }
+            if let Some(target_directory) = is_cargo_root(entry.path()) {
+                target_paths.insert(target_directory);
+                iter.skip_current_dir(); // no reason to look at the src and such
+            }
         }
     }
-    project_paths
+    target_paths.into_iter().collect()
 }
 
 fn main() {
