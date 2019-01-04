@@ -63,13 +63,9 @@ fn setup_logging(verbose: bool) {
         .unwrap();
 }
 
-/// Returns whether the given path points to a valid Cargo project.
+/// Returns whether the given path to a Cargo.toml points to a real target directory.
 fn is_cargo_root(path: &Path) -> bool {
-    let mut path = path.to_path_buf();
-
-    // Check that cargo.toml exists.
-    path.push("Cargo.toml");
-    if let Ok(metadata) = cargo_metadata::metadata(Some(path.as_path())) {
+    if let Ok(metadata) = cargo_metadata::metadata(Some(path)) {
         Path::new(&metadata.target_directory).exists()
     } else {
         false
@@ -84,11 +80,10 @@ fn find_cargo_projects(root: &Path) -> Vec<PathBuf> {
         .min_depth(1)
         .into_iter()
         .filter_map(|e| e.ok())
+        .filter(|f| f.file_name() == "Cargo.toml")
     {
-        if let Ok(metadata) = entry.metadata() {
-            if metadata.is_dir() && is_cargo_root(entry.path()) {
-                project_paths.push(entry.path().to_path_buf());
-            }
+        if is_cargo_root(entry.path()) {
+            project_paths.push(entry.path().parent().to_path_buf());
         }
     }
     project_paths
