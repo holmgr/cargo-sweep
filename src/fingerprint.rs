@@ -188,6 +188,10 @@ fn remove_not_built_with_in_a_profile(
     keep: &HashSet<String>,
     dry_run: bool,
 ) -> Result<u64, Error> {
+    debug!(
+        "cleaning: {:?} with remove_not_built_with_in_a_profile",
+        dir
+    );
     let mut total_disk_space = 0;
     total_disk_space += remove_not_matching_in_a_dir(&dir.join(".fingerprint"), &keep, dry_run)?;
     total_disk_space += remove_not_matching_in_a_dir(&dir.join("build"), &keep, dry_run)?;
@@ -204,7 +208,12 @@ fn lookup_all_fingerprint_dirs(dir: &Path) -> impl Iterator<Item = DirEntry> {
         .min_depth(1)
         .into_iter()
         .filter_map(|entry| entry.ok())
-        .filter(|p| &p.file_name().to_string_lossy() == ".fingerprint")
+        .filter(|e| {
+            e.file_name()
+                .to_str()
+                .map(|s| s == ".fingerprint")
+                .unwrap_or(false)
+        })
 }
 
 fn lookup_from_names<'a>(iter: impl Iterator<Item = &'a str>) -> Result<HashSet<u64>, Error> {
@@ -243,6 +252,7 @@ pub fn remove_not_built_with(
     rust_vertion_to_keep: Option<&str>,
     dry_run: bool,
 ) -> Result<u64, Error> {
+    debug!("cleaning: {:?} with remove_not_built_with", dir);
     let mut total_disk_space = 0;
     let hashed_rust_version_to_keep = if let Some(names) = rust_vertion_to_keep {
         info!(
@@ -258,7 +268,7 @@ pub fn remove_not_built_with(
         );
         lookup_from_names(rustup_toolchain_list.iter().map(|x| x.as_str()))?
     };
-    for fing in lookup_all_fingerprint_dirs(&dir.join("target")) {
+    for fing in lookup_all_fingerprint_dirs(dir) {
         let path = fing.into_path();
         let keep = load_all_fingerprints_built_with(&path, &hashed_rust_version_to_keep)?;
         total_disk_space +=
@@ -276,9 +286,10 @@ pub fn remove_older_then(
     keep_duration: &Duration,
     dry_run: bool,
 ) -> Result<u64, Error> {
+    debug!("cleaning: {:?} with remove_older_then", path);
     let mut total_disk_space = 0;
 
-    for fing in lookup_all_fingerprint_dirs(&path.join("target")) {
+    for fing in lookup_all_fingerprint_dirs(path) {
         let path = fing.into_path();
         let keep = load_all_fingerprints_newer_then(&path, &keep_duration)?;
         total_disk_space +=

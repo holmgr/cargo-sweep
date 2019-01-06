@@ -13,10 +13,7 @@ extern crate serde_json;
 
 use clap::{App, Arg, ArgGroup, SubCommand};
 use fern::colors::{Color, ColoredLevelConfig};
-use fingerprint::{
-    remove_not_built_with,
-    remove_older_then
-};
+use fingerprint::{remove_not_built_with, remove_older_then};
 use std::{
     env,
     path::{Path, PathBuf},
@@ -66,38 +63,60 @@ fn setup_logging(verbose: bool) {
         .unwrap();
 }
 
-/// Returns whether the given path points to a valid Cargo project.
-fn is_cargo_root(path: &Path) -> bool {
-    let mut path = path.to_path_buf();
-
-    // Check that cargo.toml exists.
-    path.push("Cargo.toml");
-    if let Ok(metadata) = cargo_metadata::metadata(Some(path.as_path())) {
-        Path::new(&metadata.target_directory).exists()
-    } else {
-        false
+/// Returns whether the given path to a Cargo.toml points to a real target directory.
+fn is_cargo_root(path: &Path) -> Option<PathBuf> {
+    if let Ok(metadata) = cargo_metadata::metadata(Some(path)) {
+        let out = Path::new(&metadata.target_directory).to_path_buf();
+        if out.exists() {
+            return Some(out);
+        }
     }
+    None
+}
+
+/// is a `DirEntry` a unix stile hidden file, ie starts with `.`
+fn is_hidden(entry: &walkdir::DirEntry) -> bool {
+    entry
+        .file_name()
+        .to_str()
+        .map(|s| s.starts_with('.'))
+        .unwrap_or(false)
 }
 
 /// Find all cargo project under the given root path.
-fn find_cargo_projects(root: &Path) -> Vec<PathBuf> {
-    let mut project_paths = vec![];
-    // Sub directories cannot be checked due to internal crates.
-    for entry in WalkDir::new(root.to_str().unwrap())
+fn find_cargo_projects(root: &Path, include_hidden: bool) -> Vec<PathBuf> {
+    let mut target_paths = std::collections::BTreeSet::new();
+
+    let mut iter = WalkDir::new(root)
         .min_depth(1)
-        .into_iter()
-        .filter_map(|e| e.ok())
-    {
-        if let Ok(metadata) = entry.metadata() {
-            if metadata.is_dir() && is_cargo_root(entry.path()) {
-                project_paths.push(entry.path().to_path_buf());
+        .into_iter();
+
+    while let Some(entry) = iter.next() {
+        if let Ok(entry) = entry {
+            if entry.file_type().is_dir() {
+                if !include_hidden && is_hidden(&entry) {
+                    iter.skip_current_dir();
+                    continue;
+                }
+                if entry.path().ancestors().any(|a| target_paths.contains(a)) {
+                    // no reason to look at the contents of something we are already cleaning.
+                    // Yes ancestors is a inefficient way to check. We can use a trie or something if it is slow.
+                    iter.skip_current_dir();
+                    continue;
+                }
+            }
+            if entry.file_name() != "Cargo.toml" {
+                continue;
+            }
+            if let Some(target_directory) = is_cargo_root(entry.path()) {
+                target_paths.insert(target_directory);
+                iter.skip_current_dir(); // no reason to look at the src and such
             }
         }
     }
-    project_paths
+    target_paths.into_iter().collect()
 }
 
-#[allow(clippy::cyclomatic_complexity)]
 fn main() {
     let matches = App::new("Cargo sweep")
         .version("0.1")
@@ -114,6 +133,13 @@ fn main() {
                     Arg::with_name("recursive")
                         .short("r")
                         .help("Apply on all projects below the given path"),
+                )
+                .arg(
+                    Arg::with_name("hidden")
+                        .long("hidden")
+                        .help("The `recursive` flag defaults to ignoring directories \
+                        that start with a `.`, `.git` for example is unlikely to include a \
+                        Cargo project, this flag changes it to look in them."),
                 )
                 .arg(
                     Arg::with_name("dry-run")
@@ -200,50 +226,42 @@ fn main() {
             return;
         }
 
-        if matches.is_present("installed") || matches.is_present("toolchains") {
-            if matches.is_present("recursive") {
-                for project_path in find_cargo_projects(&path) {
-                    match remove_not_built_with(
-                        &project_path,
-                        matches.value_of("toolchains"),
-                        dry_run,
-                    ) {
-                        Ok(cleaned_amount) if dry_run => {
-                            info!("Would clean: {}", format_bytes(cleaned_amount))
-                        }
-                        Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
-                        Err(e) => error!("Failed to clean {:?}: {}", path, e),
-                    };
-                }
+        let paths = if matches.is_present("recursive") {
+            find_cargo_projects(&path, matches.is_present("hidden"))
+        } else if let Ok(metadata) = cargo_metadata::metadata(None) {
+            let out = Path::new(&metadata.target_directory).to_path_buf();
+            if out.exists() {
+                vec![out]
             } else {
-                match remove_not_built_with(&path, matches.value_of("toolchains"), dry_run) {
+                error!("Failed to clean {:?} as it does not exist.", out);
+                return;
+            }
+        } else {
+            error!("Failed to clean {:?} as it is not a cargo project.", path);
+            return;
+        };
+
+        if matches.is_present("installed") || matches.is_present("toolchains") {
+            for project_path in &paths {
+                match remove_not_built_with(project_path, matches.value_of("toolchains"), dry_run) {
                     Ok(cleaned_amount) if dry_run => {
                         info!("Would clean: {}", format_bytes(cleaned_amount))
                     }
                     Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
-                    Err(e) => error!("Failed to clean {:?}: {}", path, e),
+                    Err(e) => error!("Failed to clean {:?}: {}", project_path, e),
                 };
             }
+
             return;
         }
 
-        if matches.is_present("recursive") {
-            for project_path in find_cargo_projects(&path) {
-                match remove_older_then(&project_path, &keep_duration, dry_run) {
-                    Ok(cleaned_amount) if dry_run => {
-                        info!("Would clean: {}", format_bytes(cleaned_amount))
-                    }
-                    Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
-                    Err(e) => error!("Failed to clean {:?}: {}", path, e),
-                };
-            }
-        } else {
-            match remove_older_then(&path, &keep_duration, dry_run) {
+        for project_path in &paths {
+            match remove_older_then(project_path, &keep_duration, dry_run) {
                 Ok(cleaned_amount) if dry_run => {
                     info!("Would clean: {}", format_bytes(cleaned_amount))
                 }
                 Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
-                Err(e) => error!("Failed to clean {:?}: {}", path, e),
+                Err(e) => error!("Failed to clean {:?}: {}", project_path, e),
             };
         }
     }
