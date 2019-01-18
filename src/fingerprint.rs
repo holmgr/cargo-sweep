@@ -3,14 +3,14 @@ use failure::{bail, Error};
 use log::{debug, info, warn};
 use serde_derive::Deserialize;
 use serde_json::from_str;
-use std::collections::HashSet;
-use std::hash::{Hash, Hasher, SipHasher};
-use std::process::Command;
-use std::time::Duration;
 use std::{
+    collections::{HashMap, HashSet},
     fs::{self, remove_dir_all, remove_file, File},
+    hash::{Hash, Hasher, SipHasher},
     io::prelude::*,
     path::Path,
+    process::Command,
+    time::Duration,
 };
 use walkdir::{DirEntry, WalkDir};
 
@@ -85,7 +85,7 @@ fn load_all_fingerprints_built_with(
         let path = entry?.path();
         if path.is_dir() {
             let f = Fingerprint::load(&path).map(|f| instaled_rustc.contains(&f.rustc));
-            // we defalt to keeping, as there are files that dont have the data we need.
+            // we default to keeping, as there are files that dont have the data we need.
             if f.unwrap_or(true) {
                 let name = path.file_name().unwrap().to_string_lossy();
                 if let Some(hash) = hash_from_path_name(&name) {
@@ -107,6 +107,29 @@ fn last_used_time(fingerprint_dir: &Path) -> Result<Duration, Error> {
         }
     }
     Ok(best)
+}
+
+fn load_all_fingerprints_by_time(fingerprint_dir: &Path) -> Result<Vec<(Duration, String)>, Error> {
+    assert_eq!(
+        fingerprint_dir
+            .file_name()
+            .expect("load takes the path to a .fingerprint directory"),
+        ".fingerprint"
+    );
+    let mut keep = vec![];
+    for entry in fs::read_dir(fingerprint_dir)? {
+        let path = entry?.path();
+        if path.is_dir() {
+            let last_used = last_used_time(&path)?;
+            let name = path.file_name().unwrap().to_string_lossy();
+            if let Some(hash) = hash_from_path_name(&name) {
+                keep.push((last_used, hash.to_string()));
+            }
+        }
+    }
+    keep.sort_unstable();
+    debug!("Hashs by time: {:#?}", keep);
+    Ok(keep)
 }
 
 fn load_all_fingerprints_newer_then(
@@ -140,6 +163,32 @@ fn total_disk_space_dir(dir: &Path) -> u64 {
         .filter_map(|entry| entry.metadata().ok())
         .filter(|metadata| metadata.is_file())
         .fold(0, |acc, m| acc + m.len())
+}
+
+fn total_disk_space_by_hash_in_a_dir(
+    dir: &Path,
+    disk_space: &mut HashMap<String, u64>,
+) -> Result<(), Error> {
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let metadata = entry.metadata()?;
+        let path = entry.path();
+        let name = path
+            .file_name()
+            .expect("folders in a directory dont have a name!?")
+            .to_string_lossy();
+
+        if let Some(hash) = hash_from_path_name(&name) {
+            *disk_space.entry(hash.to_owned()).or_default() += if path.is_file() {
+                metadata.len()
+            } else if path.is_dir() {
+                total_disk_space_dir(&path)
+            } else {
+                panic!("what type is it!")
+            };
+        }
+    }
+    Ok(())
 }
 
 fn remove_not_matching_in_a_dir(
@@ -182,6 +231,19 @@ fn remove_not_matching_in_a_dir(
             }
         }
     }
+    Ok(total_disk_space)
+}
+
+fn total_disk_space_in_a_profile(dir: &Path) -> Result<HashMap<String, u64>, Error> {
+    debug!("Sizing: {:?} with total_disk_space_in_a_profile", dir);
+    let mut total_disk_space = HashMap::new();
+    total_disk_space_by_hash_in_a_dir(&dir.join(".fingerprint"), &mut total_disk_space)?;
+    total_disk_space_by_hash_in_a_dir(&dir.join("build"), &mut total_disk_space)?;
+    total_disk_space_by_hash_in_a_dir(&dir.join("deps"), &mut total_disk_space)?;
+    // examples is just final artifacts not tracked by fingerprint so skip that one.
+    // incremental is not tracked by fingerprint so skip that one.
+    total_disk_space_by_hash_in_a_dir(&dir.join("native"), &mut total_disk_space)?;
+    total_disk_space_by_hash_in_a_dir(dir, &mut total_disk_space)?;
     Ok(total_disk_space)
 }
 
@@ -279,7 +341,7 @@ pub fn remove_not_built_with(
     Ok(total_disk_space)
 }
 
-/// Attempts to sweep the cargo project lookated at the given path,
+/// Attempts to sweep the cargo project located at the given path,
 /// keeping only files which have been accessed within the given duration.
 /// Dry specifies if files should actually be removed or not.
 /// Returns a list of the deleted file/dir paths.
@@ -296,6 +358,70 @@ pub fn remove_older_then(
         let keep = load_all_fingerprints_newer_then(&path, &keep_duration)?;
         total_disk_space +=
             remove_not_built_with_in_a_profile(path.parent().unwrap(), &keep, dry_run)?;
+    }
+
+    Ok(total_disk_space)
+}
+
+pub fn remove_older_until_fits(path: &Path, target_size: u64, dry_run: bool) -> Result<u64, Error> {
+    debug!("cleaning: {:?} with remove_older_until_fits", path);
+    let starting_size = total_disk_space_dir(path);
+    if starting_size <= target_size {
+        // already below target
+        return Ok(0);
+    }
+    let size_to_remove = starting_size - target_size;
+    debug!("size_to_remove: {:?}", size_to_remove);
+
+    let fingerprint_dirs: Vec<DirEntry> = lookup_all_fingerprint_dirs(path).collect();
+    let mut order: Vec<(Duration, u64, &Path, String)> = vec![];
+    for fing in &fingerprint_dirs {
+        let path = fing.path();
+        let sizes = total_disk_space_in_a_profile(path.parent().unwrap())?;
+        for (last_used, hash) in load_all_fingerprints_by_time(path)? {
+            order.push((
+                last_used,
+                *(sizes.get(&hash).unwrap_or(&0)),
+                fing.path(),
+                hash,
+            ));
+        }
+    }
+
+    // as Duration is first in the elements of order this sorts items from new to old
+    order.sort();
+
+    let mut removed = 0u64;
+    // organized keeps track of what needs to be keep per fingerprint dirs
+    let mut organized = HashMap::new();
+    let mut printed = false;
+
+    for dir in &fingerprint_dirs {
+        // populate organized with keeping nothing in each fingerprint dirs
+        organized.entry(dir.path()).or_insert_with(HashSet::new);
+    }
+
+    for (last_used, sizes, fing, hash) in order.into_iter().rev() {
+        if removed + sizes < size_to_remove {
+            removed += sizes;
+            continue;
+        }
+        if !printed {
+            // TODO: consider formatting better for printing
+            info!("Removing older then: {:?}", &last_used);
+            printed = true;
+        }
+        organized
+            .entry(fing)
+            .or_insert_with(HashSet::new)
+            .insert(hash);
+    }
+
+    let mut total_disk_space = 0;
+
+    for (fing, keep) in organized {
+        total_disk_space +=
+            remove_not_built_with_in_a_profile(fing.parent().unwrap(), &keep, dry_run)?;
     }
 
     Ok(total_disk_space)
