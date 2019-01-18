@@ -1,5 +1,7 @@
 #![allow(deprecated)]
 use failure::{bail, Error};
+use log::{debug, info, warn};
+use serde_derive::Deserialize;
 use serde_json::from_str;
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher, SipHasher};
