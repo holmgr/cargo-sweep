@@ -1,19 +1,6 @@
-extern crate chrono;
-extern crate clap;
-extern crate failure;
-extern crate walkdir;
-#[macro_use]
-extern crate log;
-extern crate cargo_metadata;
-extern crate fern;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde;
-extern crate serde_json;
-
 use clap::{App, Arg, ArgGroup, SubCommand};
 use fern::colors::{Color, ColoredLevelConfig};
-use fingerprint::{remove_not_built_with, remove_older_then};
+use log::{debug, error, info};
 use std::{
     env,
     path::{Path, PathBuf},
@@ -24,6 +11,7 @@ use walkdir::WalkDir;
 mod fingerprint;
 mod stamp;
 mod util;
+use self::fingerprint::{remove_not_built_with, remove_older_then};
 use self::stamp::Timestamp;
 use self::util::format_bytes;
 
@@ -87,9 +75,7 @@ fn is_hidden(entry: &walkdir::DirEntry) -> bool {
 fn find_cargo_projects(root: &Path, include_hidden: bool) -> Vec<PathBuf> {
     let mut target_paths = std::collections::BTreeSet::new();
 
-    let mut iter = WalkDir::new(root)
-        .min_depth(1)
-        .into_iter();
+    let mut iter = WalkDir::new(root).min_depth(1).into_iter();
 
     while let Some(entry) = iter.next() {
         if let Ok(entry) = entry {
