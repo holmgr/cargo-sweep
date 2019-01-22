@@ -11,7 +11,7 @@ use walkdir::WalkDir;
 mod fingerprint;
 mod stamp;
 mod util;
-use self::fingerprint::{remove_not_built_with, remove_older_then};
+use self::fingerprint::{remove_not_built_with, remove_older_then, remove_older_until_fits};
 use self::stamp::Timestamp;
 use self::util::format_bytes;
 
@@ -148,13 +148,20 @@ fn main() {
                     Arg::with_name("installed")
                         .short("i")
                         .long("installed")
-                        .help("Keep only artefacts made by Toolchains currently installed by rustup")
+                        .help("Keep only artifacts made by Toolchains currently installed by rustup")
                 )
                 .arg(
                     Arg::with_name("toolchains")
                         .long("toolchains")
                         .value_name("toolchains")
-                        .help("Toolchains (currently installed by rustup) that shuld have there artefacts kept.")
+                        .help("Toolchains (currently installed by rustup) that should have there artifacts kept.")
+                        .takes_value(true),
+                )
+                .arg(
+                    Arg::with_name("maxsize")
+                        .long("maxsize")
+                        .value_name("maxsize")
+                        .help("Remove oldest artefact's until the target directory is below the specified size in MB")
                         .takes_value(true),
                 )
                 .arg(
@@ -167,7 +174,7 @@ fn main() {
                 )
                 .group(
                     ArgGroup::with_name("timestamp")
-                        .args(&["stamp", "file", "time", "installed", "toolchains"])
+                        .args(&["stamp", "file", "time", "installed", "toolchains", "maxsize"])
                         .required(true),
                 )
                 .arg(
@@ -230,6 +237,30 @@ fn main() {
         if matches.is_present("installed") || matches.is_present("toolchains") {
             for project_path in &paths {
                 match remove_not_built_with(project_path, matches.value_of("toolchains"), dry_run) {
+                    Ok(cleaned_amount) if dry_run => {
+                        info!("Would clean: {}", format_bytes(cleaned_amount))
+                    }
+                    Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
+                    Err(e) => error!("Failed to clean {:?}: {}", project_path, e),
+                };
+            }
+
+            return;
+        }
+
+        if matches.is_present("maxsize") {
+            // TODO: consider parsing units like GB, KB ...
+            let size = match matches.value_of("maxsize").and_then(|s| s.parse::<u64>().ok()) {
+                Some(s) => s * 1024 * 1024,
+                None => {
+                    error!("maxsize has to be a number");
+                    return;
+                }
+            };
+
+            for project_path in &paths {
+                match remove_older_until_fits(project_path, size, dry_run)
+                {
                     Ok(cleaned_amount) if dry_run => {
                         info!("Would clean: {}", format_bytes(cleaned_amount))
                     }
