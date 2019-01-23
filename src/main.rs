@@ -250,7 +250,10 @@ fn main() {
 
         if matches.is_present("maxsize") {
             // TODO: consider parsing units like GB, KB ...
-            let size = match matches.value_of("maxsize").and_then(|s| s.parse::<u64>().ok()) {
+            let size = match matches
+                .value_of("maxsize")
+                .and_then(|s| s.parse::<u64>().ok())
+            {
                 Some(s) => s * 1024 * 1024,
                 None => {
                     error!("maxsize has to be a number");
@@ -259,8 +262,7 @@ fn main() {
             };
 
             for project_path in &paths {
-                match remove_older_until_fits(project_path, size, dry_run)
-                {
+                match remove_older_until_fits(project_path, size, dry_run) {
                     Ok(cleaned_amount) if dry_run => {
                         info!("Would clean: {}", format_bytes(cleaned_amount))
                     }
