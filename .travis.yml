@@ -42,7 +42,7 @@ before_cache:
 - chmod -R a+r $HOME/.cargo
 branches:
   only:
-  - "/^v\\d+\\.\\d+\\.\\d+.*$/"
+  - "/^v?\\d+\\.\\d+\\.\\d+.*$/"
   - master
 notifications:
   email:
