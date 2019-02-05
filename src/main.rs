@@ -1,4 +1,7 @@
-use clap::{App, Arg, ArgGroup, SubCommand};
+use clap::{
+    app_from_crate, crate_authors, crate_description, crate_name, crate_version, Arg, ArgGroup,
+    SubCommand,
+};
 use fern::colors::{Color, ColoredLevelConfig};
 use log::{debug, error, info};
 use std::{
@@ -104,10 +107,7 @@ fn find_cargo_projects(root: &Path, include_hidden: bool) -> Vec<PathBuf> {
 }
 
 fn main() {
-    let matches = App::new("Cargo sweep")
-        .version("0.1")
-        .author("Viktor Holmgren <viktor.holmgren@gmail.com>")
-        .about("Clean old/unused Cargo artifacts")
+    let matches = app_from_crate!()
         .subcommand(
             SubCommand::with_name("sweep")
                 .arg(
