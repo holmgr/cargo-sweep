@@ -1,3 +1,4 @@
+use cargo_metadata::MetadataCommand;
 use clap::{
     app_from_crate, crate_authors, crate_description, crate_name, crate_version, Arg, ArgGroup,
     SubCommand,
@@ -56,7 +57,7 @@ fn setup_logging(verbose: bool) {
 
 /// Returns whether the given path to a Cargo.toml points to a real target directory.
 fn is_cargo_root(path: &Path) -> Option<PathBuf> {
-    if let Ok(metadata) = cargo_metadata::metadata(Some(path)) {
+    if let Ok(metadata) = MetadataCommand::new().manifest_path(path).no_deps().exec() {
         let out = Path::new(&metadata.target_directory).to_path_buf();
         if out.exists() {
             return Some(out);
@@ -221,7 +222,7 @@ fn main() {
 
         let paths = if matches.is_present("recursive") {
             find_cargo_projects(&path, matches.is_present("hidden"))
-        } else if let Ok(metadata) = cargo_metadata::metadata(None) {
+        } else if let Ok(metadata) = MetadataCommand::new().no_deps().exec() {
             let out = Path::new(&metadata.target_directory).to_path_buf();
             if out.exists() {
                 vec![out]
