@@ -7,6 +7,7 @@ use std::{
     collections::{HashMap, HashSet},
     fs::{self, remove_dir_all, remove_file, File},
     hash::{Hash, Hasher, SipHasher},
+    io,
     io::prelude::*,
     path::Path,
     process::Command,
@@ -262,7 +263,19 @@ fn remove_not_built_with_in_a_profile(
     total_disk_space += remove_not_matching_in_a_dir(&dir.join("deps"), &keep, dry_run)?;
     // examples is just final artifacts not tracked by fingerprint so skip that one.
     // incremental is not tracked by fingerprint so skip that one.
-    total_disk_space += remove_not_matching_in_a_dir(&dir.join("native"), &keep, dry_run)?;
+    // native is no longer used by cargo as of August 2019
+    match remove_not_matching_in_a_dir(&dir.join("native"), &keep, dry_run) {
+        Ok(bytes) => total_disk_space += bytes,
+        Err(err) => {
+            if let Some(ioerr) = err.downcast_ref::<io::Error>() {
+                if ioerr.kind() != io::ErrorKind::NotFound {
+                    return Err(err);
+                }
+
+                ()
+            }
+        }
+    }
     total_disk_space += remove_not_matching_in_a_dir(dir, &keep, dry_run)?;
     Ok(total_disk_space)
 }
