@@ -288,10 +288,16 @@ fn lookup_all_fingerprint_dirs(dir: &Path) -> impl Iterator<Item = DirEntry> {
         })
 }
 
-fn lookup_from_names<'a>(iter: impl Iterator<Item = &'a str>) -> Result<HashSet<u64>, Error> {
+fn lookup_from_names<'a>(
+    iter: impl Iterator<Item = Option<impl AsRef<str>>>,
+) -> Result<HashSet<u64>, Error> {
     iter.map(|x| {
-        let plus_name = "+".to_owned() + x;
-        let out = Command::new("rustc").args(&[&plus_name, "-vV"]).output()?;
+        let args = x
+            .into_iter()
+            .map(|toolchain| format!("+{}", toolchain.as_ref()))
+            .chain(Some("-vV".to_string()));
+        let out = Command::new("rustc").args(args).output()?;
+
         if !out.status.success() {
             bail!(String::from_utf8_lossy(&out.stdout).to_string());
         }
@@ -305,18 +311,24 @@ fn lookup_from_names<'a>(iter: impl Iterator<Item = &'a str>) -> Result<HashSet<
     .collect()
 }
 
-fn rustup_toolchain_list() -> Result<Vec<String>, Error> {
-    let out = Command::new("rustup")
-        .args(&["toolchain", "list"])
-        .output()?;
-    if !out.status.success() {
-        bail!(String::from_utf8_lossy(&out.stdout).to_string());
+fn rustup_toolchain_list() -> Option<Vec<String>> {
+    let out = Command::new("rustup").args(&["toolchain", "list"]).output();
+
+    match out {
+        Ok(out) if out.status.success() => {
+            let res = String::from_utf8_lossy(&out.stdout)
+                .split('\n')
+                .filter_map(|x| x.split_whitespace().next())
+                .map(|x| x.trim().to_owned())
+                .collect::<Vec<String>>();
+
+            Some(res)
+        }
+
+        // Ouch, rustup was not available or something.
+        // Let's just fallback to the bare `rustc` and hope for the best.
+        _ => None,
     }
-    Ok(String::from_utf8_lossy(&out.stdout)
-        .split('\n')
-        .filter_map(|x| x.split_whitespace().next())
-        .map(|x| x.trim().to_owned())
-        .collect::<Vec<String>>())
 }
 
 pub fn remove_not_built_with(
@@ -331,14 +343,20 @@ pub fn remove_not_built_with(
             "Using specified installed toolchains: {:?}",
             names.split(',').collect::<Vec<_>>()
         );
-        lookup_from_names(names.split(','))?
+        lookup_from_names(names.split(',').map(Some))?
     } else {
-        let rustup_toolchain_list = rustup_toolchain_list()?;
-        info!(
-            "Using all installed toolchains: {:?}",
-            rustup_toolchain_list
-        );
-        lookup_from_names(rustup_toolchain_list.iter().map(|x| x.as_str()))?
+        match rustup_toolchain_list() {
+            Some(list) => {
+                info!("Using all installed toolchains: {:?}", list);
+                lookup_from_names(list.iter().map(Some))?
+            }
+
+            None => {
+                info!("Couldn't identify the installed toolchains, using bare `rustc` call");
+                let list: Vec<Option<String>> = vec![None];
+                lookup_from_names(list.into_iter())?
+            }
+        }
     };
     for fing in lookup_all_fingerprint_dirs(dir) {
         let path = fing.into_path();
