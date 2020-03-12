@@ -4,7 +4,7 @@ pub fn format_bytes(bytes: u64) -> String {
     let mut bytes = bytes as f64;
     for prefix in prefixes.iter() {
         if bytes < 1024. {
-            return format!("{} {}", bytes, prefix);
+            return format!("{.2} {}", bytes, prefix);
         }
         bytes /= 1024.;
     }
