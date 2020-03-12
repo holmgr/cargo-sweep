@@ -17,8 +17,8 @@ mod tests {
 
     #[test]
     fn test_format_bytes() {
-        assert_eq!(format_bytes(1024), "1 kiB");
-        assert_eq!(format_bytes(1023), "1023 bytes");
-        assert_eq!(format_bytes(500 * 1024 * 1024), "500 MiB");
+        assert_eq!(format_bytes(1024), "1.00 kiB");
+        assert_eq!(format_bytes(1023), "1023.00 bytes");
+        assert_eq!(format_bytes(500 * 1024 * 1024), "500.00 MiB");
     }
 }
