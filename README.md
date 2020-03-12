@@ -41,6 +41,7 @@ cargo sweep -i
 
 This can be useful if you just updated your compilers with a `rustup update`.
 
+Non-rustup environment are also supported. If `cargo-sweep` fails to run rustup, it fallbacks to bare `rustc` call (`rustc` must be installed and the path to it must be available through the PATH environment variable).
 
 To preview the results of a sweep run, which is recommended as a first step, add the `-d` flag, for instance:
 
