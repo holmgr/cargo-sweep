@@ -170,7 +170,7 @@ fn main() {
                         .short("t")
                         .long("time")
                         .value_name("days")
-                        .help("Number of days backwards to keep. If no value is set uses 30.")
+                        .help("Number of days backwards to keep")
                         .takes_value(true),
                 )
                 .group(
@@ -205,7 +205,6 @@ fn main() {
         } else {
             let days_to_keep: u64 = matches
                 .value_of("time")
-                .unwrap_or("30")
                 .parse()
                 .expect("Invalid time format");
             Duration::from_secs(days_to_keep * 24 * 3600)
