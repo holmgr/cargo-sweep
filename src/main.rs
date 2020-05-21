@@ -205,6 +205,7 @@ fn main() {
         } else {
             let days_to_keep: u64 = matches
                 .value_of("time")
+                .expect("--time argument missing")
                 .parse()
                 .expect("Invalid time format");
             Duration::from_secs(days_to_keep * 24 * 3600)
