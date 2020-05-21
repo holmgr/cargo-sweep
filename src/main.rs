@@ -162,7 +162,7 @@ fn main() {
                     Arg::with_name("maxsize")
                         .long("maxsize")
                         .value_name("maxsize")
-                        .help("Remove oldest artefact's until the target directory is below the specified size in MB")
+                        .help("Remove oldest artifacts until the target directory is below the specified size in MB")
                         .takes_value(true),
                 )
                 .arg(
