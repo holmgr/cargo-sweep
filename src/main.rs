@@ -199,6 +199,15 @@ fn main() {
             None => env::current_dir().expect("Failed to get current directory"),
         };
 
+        if matches.is_present("stamp") {
+            debug!("Writing timestamp file in: {:?}", path);
+            match Timestamp::new().store(path.as_path()) {
+                Ok(_) => {}
+                Err(e) => error!("Failed to write timestamp file: {}", e),
+            }
+            return;
+        }
+
         let keep_duration = if matches.is_present("file") {
             let ts = Timestamp::load(path.as_path()).expect("Failed to load timestamp file");
             Duration::from(ts)
@@ -210,15 +219,6 @@ fn main() {
                 .expect("Invalid time format");
             Duration::from_secs(days_to_keep * 24 * 3600)
         };
-
-        if matches.is_present("stamp") {
-            debug!("Writing timestamp file in: {:?}", path);
-            match Timestamp::new().store(path.as_path()) {
-                Ok(_) => {}
-                Err(e) => error!("Failed to write timestamp file: {}", e),
-            }
-            return;
-        }
 
         let paths = if matches.is_present("recursive") {
             find_cargo_projects(&path, matches.is_present("hidden"))
