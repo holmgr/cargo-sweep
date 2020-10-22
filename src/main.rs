@@ -178,6 +178,8 @@ fn main() -> anyhow::Result<()> {
         return_paths
     };
 
+    let mut total_cleaned = 0;
+
     // `None`: do not remove based on toolchain version
     // `Some(None)`: remove all installed toolchains
     // `Some(Some(Vec))`: remove only the specified toolchains
@@ -202,11 +204,15 @@ fn main() -> anyhow::Result<()> {
                         "Would clean: {} from {project_path:?}",
                         format_bytes(cleaned_amount)
                     );
+                    total_cleaned += cleaned_amount;
                 }
-                Ok(cleaned_amount) => info!(
-                    "Cleaned {} from {project_path:?}",
-                    format_bytes(cleaned_amount)
-                ),
+                Ok(cleaned_amount) => {
+                    info!(
+                        "Cleaned {} from {project_path:?}",
+                        format_bytes(cleaned_amount)
+                    );
+                    total_cleaned += cleaned_amount;
+                }
                 Err(e) => error!(
                     "{:?}",
                     e.context(format!("Failed to clean {project_path:?}"))
@@ -221,11 +227,15 @@ fn main() -> anyhow::Result<()> {
                         "Would clean: {} from {project_path:?}",
                         format_bytes(cleaned_amount)
                     );
+                    total_cleaned += cleaned_amount;
                 }
-                Ok(cleaned_amount) => info!(
-                    "Cleaned {} from {project_path:?}",
-                    format_bytes(cleaned_amount)
-                ),
+                Ok(cleaned_amount) => {
+                    info!(
+                        "Cleaned {} from {project_path:?}",
+                        format_bytes(cleaned_amount)
+                    );
+                    total_cleaned += cleaned_amount;
+                }
                 Err(e) => error!("Failed to clean {:?}: {:?}", project_path, e),
             };
         }
@@ -247,13 +257,21 @@ fn main() -> anyhow::Result<()> {
                         "Would clean: {} from {project_path:?}",
                         format_bytes(cleaned_amount)
                     );
+                    total_cleaned += cleaned_amount;
                 }
-                Ok(cleaned_amount) => info!(
-                    "Cleaned {} from {project_path:?}",
-                    format_bytes(cleaned_amount)
-                ),
+                Ok(cleaned_amount) => {
+                    info!(
+                        "Cleaned {} from {project_path:?}",
+                        format_bytes(cleaned_amount)
+                    );
+                    total_cleaned += cleaned_amount;
+                }
                 Err(e) => error!("Failed to clean {:?}: {:?}", project_path, e),
             };
+        }
+
+        if processed_paths.len() > 1 {
+            info!("Total amount: {}", format_bytes(total_cleaned));
         }
     }
 
