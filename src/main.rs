@@ -155,7 +155,7 @@ fn main() {
                     Arg::with_name("toolchains")
                         .long("toolchains")
                         .value_name("toolchains")
-                        .help("Toolchains (currently installed by rustup) that should have there artifacts kept.")
+                        .help("Toolchains (currently installed by rustup) that should have their artifacts kept.")
                         .takes_value(true),
                 )
                 .arg(
