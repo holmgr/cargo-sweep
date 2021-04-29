@@ -1,4 +1,4 @@
-use cargo_metadata::MetadataCommand;
+use cargo_metadata::{Error, Metadata, MetadataCommand};
 use clap::{
     app_from_crate, crate_authors, crate_description, crate_name, crate_version, Arg, ArgGroup,
     SubCommand,
@@ -7,6 +7,7 @@ use fern::colors::{Color, ColoredLevelConfig};
 use log::{debug, error, info};
 use std::{
     env,
+    ffi::OsStr,
     path::{Path, PathBuf},
     time::Duration,
 };
@@ -57,7 +58,7 @@ fn setup_logging(verbose: bool) {
 
 /// Returns whether the given path to a Cargo.toml points to a real target directory.
 fn is_cargo_root(path: &Path) -> Option<PathBuf> {
-    if let Ok(metadata) = MetadataCommand::new().manifest_path(path).no_deps().exec() {
+    if let Ok(metadata) = metadata(path) {
         let out = Path::new(&metadata.target_directory).to_path_buf();
         if out.exists() {
             return Some(out);
@@ -105,6 +106,19 @@ fn find_cargo_projects(root: &Path, include_hidden: bool) -> Vec<PathBuf> {
         }
     }
     target_paths.into_iter().collect()
+}
+
+fn metadata(path: &Path) -> Result<Metadata, Error> {
+    let manifest_path = if path.file_name().and_then(OsStr::to_str) == Some("Cargo.toml") {
+        path.to_owned()
+    } else {
+        path.join("Cargo.toml")
+    };
+
+    MetadataCommand::new()
+        .manifest_path(manifest_path)
+        .no_deps()
+        .exec()
 }
 
 fn main() {
@@ -222,7 +236,7 @@ fn main() {
 
         let paths = if matches.is_present("recursive") {
             find_cargo_projects(&path, matches.is_present("hidden"))
-        } else if let Ok(metadata) = MetadataCommand::new().no_deps().exec() {
+        } else if let Ok(metadata) = metadata(&path) {
             let out = Path::new(&metadata.target_directory).to_path_buf();
             if out.exists() {
                 vec![out]
