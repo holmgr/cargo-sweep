@@ -101,7 +101,11 @@ fn load_all_fingerprints_built_with(
 fn last_used_time(fingerprint_dir: &Path) -> Result<Duration, Error> {
     let mut best = Duration::from_secs(3_155_760_000); // 100 years!
     for entry in fs::read_dir(fingerprint_dir)? {
-        let accessed = entry?.metadata()?.accessed()?.elapsed()?;
+        let accessed = entry?
+            .metadata()?
+            .accessed()?
+            .elapsed()
+            .unwrap_or(Duration::from_secs(0));
         if accessed < best {
             best = accessed;
         }
