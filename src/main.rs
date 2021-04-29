@@ -15,7 +15,7 @@ use walkdir::WalkDir;
 mod fingerprint;
 mod stamp;
 mod util;
-use self::fingerprint::{remove_not_built_with, remove_older_then, remove_older_until_fits};
+use self::fingerprint::{remove_not_built_with, remove_older_than, remove_older_until_fits};
 use self::stamp::Timestamp;
 use self::util::format_bytes;
 
@@ -276,7 +276,7 @@ fn main() {
         }
 
         for project_path in &paths {
-            match remove_older_then(project_path, &keep_duration, dry_run) {
+            match remove_older_than(project_path, &keep_duration, dry_run) {
                 Ok(cleaned_amount) if dry_run => {
                     info!("Would clean: {}", format_bytes(cleaned_amount))
                 }
