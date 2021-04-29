@@ -261,7 +261,6 @@ fn remove_not_built_with_in_a_profile(
         dir
     );
     let mut total_disk_space = 0;
-    total_disk_space += remove_not_matching_in_a_dir(&dir.join(".fingerprint"), &keep, dry_run)?;
     total_disk_space += remove_not_matching_in_a_dir(&dir.join("build"), &keep, dry_run)?;
     total_disk_space += remove_not_matching_in_a_dir(&dir.join("deps"), &keep, dry_run)?;
     // examples is just final artifacts not tracked by fingerprint so skip that one.
@@ -272,6 +271,7 @@ fn remove_not_built_with_in_a_profile(
         total_disk_space += remove_not_matching_in_a_dir(&native_dir, &keep, dry_run)?;
     }
     total_disk_space += remove_not_matching_in_a_dir(dir, &keep, dry_run)?;
+    total_disk_space += remove_not_matching_in_a_dir(&dir.join(".fingerprint"), &keep, dry_run)?;
     Ok(total_disk_space)
 }
 
