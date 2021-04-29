@@ -145,6 +145,7 @@ fn main() {
                 .arg(
                     Arg::with_name("dry-run")
                         .short("d")
+                        .long("dry-run")
                         .help("Dry run which will not delete any files"),
                 )
                 .arg(
