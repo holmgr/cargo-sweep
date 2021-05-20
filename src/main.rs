@@ -1,4 +1,4 @@
-use cargo_metadata::MetadataCommand;
+use cargo_metadata::{Error, Metadata, MetadataCommand};
 use clap::{
     app_from_crate, crate_authors, crate_description, crate_name, crate_version, Arg, ArgGroup,
     SubCommand,
@@ -7,6 +7,7 @@ use fern::colors::{Color, ColoredLevelConfig};
 use log::{debug, error, info};
 use std::{
     env,
+    ffi::OsStr,
     path::{Path, PathBuf},
     time::Duration,
 };
@@ -15,7 +16,7 @@ use walkdir::WalkDir;
 mod fingerprint;
 mod stamp;
 mod util;
-use self::fingerprint::{remove_not_built_with, remove_older_then, remove_older_until_fits};
+use self::fingerprint::{remove_not_built_with, remove_older_than, remove_older_until_fits};
 use self::stamp::Timestamp;
 use self::util::format_bytes;
 
@@ -57,7 +58,7 @@ fn setup_logging(verbose: bool) {
 
 /// Returns whether the given path to a Cargo.toml points to a real target directory.
 fn is_cargo_root(path: &Path) -> Option<PathBuf> {
-    if let Ok(metadata) = MetadataCommand::new().manifest_path(path).no_deps().exec() {
+    if let Ok(metadata) = metadata(path) {
         let out = Path::new(&metadata.target_directory).to_path_buf();
         if out.exists() {
             return Some(out);
@@ -107,6 +108,19 @@ fn find_cargo_projects(root: &Path, include_hidden: bool) -> Vec<PathBuf> {
     target_paths.into_iter().collect()
 }
 
+fn metadata(path: &Path) -> Result<Metadata, Error> {
+    let manifest_path = if path.file_name().and_then(OsStr::to_str) == Some("Cargo.toml") {
+        path.to_owned()
+    } else {
+        path.join("Cargo.toml")
+    };
+
+    MetadataCommand::new()
+        .manifest_path(manifest_path)
+        .no_deps()
+        .exec()
+}
+
 fn main() {
     let matches = app_from_crate!()
         .subcommand(
@@ -131,6 +145,7 @@ fn main() {
                 .arg(
                     Arg::with_name("dry-run")
                         .short("d")
+                        .long("dry-run")
                         .help("Dry run which will not delete any files"),
                 )
                 .arg(
@@ -222,7 +237,7 @@ fn main() {
 
         let paths = if matches.is_present("recursive") {
             find_cargo_projects(&path, matches.is_present("hidden"))
-        } else if let Ok(metadata) = MetadataCommand::new().no_deps().exec() {
+        } else if let Ok(metadata) = metadata(&path) {
             let out = Path::new(&metadata.target_directory).to_path_buf();
             if out.exists() {
                 vec![out]
@@ -276,7 +291,7 @@ fn main() {
         }
 
         for project_path in &paths {
-            match remove_older_then(project_path, &keep_duration, dry_run) {
+            match remove_older_than(project_path, &keep_duration, dry_run) {
                 Ok(cleaned_amount) if dry_run => {
                     info!("Would clean: {}", format_bytes(cleaned_amount))
                 }

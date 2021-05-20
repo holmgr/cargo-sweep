@@ -72,7 +72,7 @@ impl Fingerprint {
 
 fn load_all_fingerprints_built_with(
     fingerprint_dir: &Path,
-    instaled_rustc: &HashSet<u64>,
+    installed_rustc: &HashSet<u64>,
 ) -> Result<HashSet<String>, Error> {
     assert_eq!(
         fingerprint_dir
@@ -84,7 +84,7 @@ fn load_all_fingerprints_built_with(
     for entry in fs::read_dir(fingerprint_dir)? {
         let path = entry?.path();
         if path.is_dir() {
-            let f = Fingerprint::load(&path).map(|f| instaled_rustc.contains(&f.rustc));
+            let f = Fingerprint::load(&path).map(|f| installed_rustc.contains(&f.rustc));
             // we default to keeping, as there are files that dont have the data we need.
             if f.unwrap_or(true) {
                 let name = path.file_name().unwrap().to_string_lossy();
@@ -101,7 +101,11 @@ fn load_all_fingerprints_built_with(
 fn last_used_time(fingerprint_dir: &Path) -> Result<Duration, Error> {
     let mut best = Duration::from_secs(3_155_760_000); // 100 years!
     for entry in fs::read_dir(fingerprint_dir)? {
-        let accessed = entry?.metadata()?.accessed()?.elapsed()?;
+        let accessed = entry?
+            .metadata()?
+            .accessed()?
+            .elapsed()
+            .unwrap_or(Duration::from_secs(0));
         if accessed < best {
             best = accessed;
         }
@@ -132,7 +136,7 @@ fn load_all_fingerprints_by_time(fingerprint_dir: &Path) -> Result<Vec<(Duration
     Ok(keep)
 }
 
-fn load_all_fingerprints_newer_then(
+fn load_all_fingerprints_newer_than(
     fingerprint_dir: &Path,
     keep_duration: &Duration,
 ) -> Result<HashSet<String>, Error> {
@@ -175,7 +179,7 @@ fn total_disk_space_by_hash_in_a_dir(
         let path = entry.path();
         let name = path
             .file_name()
-            .expect("folders in a directory dont have a name!?")
+            .expect("folders in a directory don't have a name!?")
             .to_string_lossy();
 
         if let Some(hash) = hash_from_path_name(&name) {
@@ -203,7 +207,7 @@ fn remove_not_matching_in_a_dir(
         let path = entry.path();
         let name = path
             .file_name()
-            .expect("folders in a directory dont have a name!?")
+            .expect("folders in a directory don't have a name!?")
             .to_string_lossy();
         if let Some(hash) = hash_from_path_name(&name) {
             if !keep.contains(hash) {
@@ -261,7 +265,6 @@ fn remove_not_built_with_in_a_profile(
         dir
     );
     let mut total_disk_space = 0;
-    total_disk_space += remove_not_matching_in_a_dir(&dir.join(".fingerprint"), &keep, dry_run)?;
     total_disk_space += remove_not_matching_in_a_dir(&dir.join("build"), &keep, dry_run)?;
     total_disk_space += remove_not_matching_in_a_dir(&dir.join("deps"), &keep, dry_run)?;
     // examples is just final artifacts not tracked by fingerprint so skip that one.
@@ -272,6 +275,7 @@ fn remove_not_built_with_in_a_profile(
         total_disk_space += remove_not_matching_in_a_dir(&native_dir, &keep, dry_run)?;
     }
     total_disk_space += remove_not_matching_in_a_dir(dir, &keep, dry_run)?;
+    total_disk_space += remove_not_matching_in_a_dir(&dir.join(".fingerprint"), &keep, dry_run)?;
     Ok(total_disk_space)
 }
 
@@ -333,12 +337,12 @@ fn rustup_toolchain_list() -> Option<Vec<String>> {
 
 pub fn remove_not_built_with(
     dir: &Path,
-    rust_vertion_to_keep: Option<&str>,
+    rust_version_to_keep: Option<&str>,
     dry_run: bool,
 ) -> Result<u64, Error> {
     debug!("cleaning: {:?} with remove_not_built_with", dir);
     let mut total_disk_space = 0;
-    let hashed_rust_version_to_keep = if let Some(names) = rust_vertion_to_keep {
+    let hashed_rust_version_to_keep = if let Some(names) = rust_version_to_keep {
         info!(
             "Using specified installed toolchains: {:?}",
             names.split(',').collect::<Vec<_>>()
@@ -371,17 +375,17 @@ pub fn remove_not_built_with(
 /// keeping only files which have been accessed within the given duration.
 /// Dry specifies if files should actually be removed or not.
 /// Returns a list of the deleted file/dir paths.
-pub fn remove_older_then(
+pub fn remove_older_than(
     path: &Path,
     keep_duration: &Duration,
     dry_run: bool,
 ) -> Result<u64, Error> {
-    debug!("cleaning: {:?} with remove_older_then", path);
+    debug!("cleaning: {:?} with remove_older_than", path);
     let mut total_disk_space = 0;
 
     for fing in lookup_all_fingerprint_dirs(path) {
         let path = fing.into_path();
-        let keep = load_all_fingerprints_newer_then(&path, &keep_duration)?;
+        let keep = load_all_fingerprints_newer_than(&path, &keep_duration)?;
         total_disk_space +=
             remove_not_built_with_in_a_profile(path.parent().unwrap(), &keep, dry_run)?;
     }
