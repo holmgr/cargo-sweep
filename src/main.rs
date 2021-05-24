@@ -223,18 +223,6 @@ fn main() {
             return;
         }
 
-        let keep_duration = if matches.is_present("file") {
-            let ts = Timestamp::load(path.as_path()).expect("Failed to load timestamp file");
-            Duration::from(ts)
-        } else {
-            let days_to_keep: u64 = matches
-                .value_of("time")
-                .expect("--time argument missing")
-                .parse()
-                .expect("Invalid time format");
-            Duration::from_secs(days_to_keep * 24 * 3600)
-        };
-
         let paths = if matches.is_present("recursive") {
             find_cargo_projects(&path, matches.is_present("hidden"))
         } else if let Ok(metadata) = metadata(&path) {
@@ -250,6 +238,7 @@ fn main() {
             return;
         };
 
+
         if matches.is_present("installed") || matches.is_present("toolchains") {
             for project_path in &paths {
                 match remove_not_built_with(project_path, matches.value_of("toolchains"), dry_run) {
@@ -260,11 +249,7 @@ fn main() {
                     Err(e) => error!("Failed to clean {:?}: {}", project_path, e),
                 };
             }
-
-            return;
-        }
-
-        if matches.is_present("maxsize") {
+        } else if matches.is_present("maxsize") {
             // TODO: consider parsing units like GB, KB ...
             let size = match matches
                 .value_of("maxsize")
@@ -286,18 +271,28 @@ fn main() {
                     Err(e) => error!("Failed to clean {:?}: {}", project_path, e),
                 };
             }
-
-            return;
-        }
-
-        for project_path in &paths {
-            match remove_older_than(project_path, &keep_duration, dry_run) {
-                Ok(cleaned_amount) if dry_run => {
-                    info!("Would clean: {}", format_bytes(cleaned_amount))
-                }
-                Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
-                Err(e) => error!("Failed to clean {:?}: {}", project_path, e),
+        } else {
+            let keep_duration = if matches.is_present("file") {
+                let ts = Timestamp::load(path.as_path()).expect("Failed to load timestamp file");
+                Duration::from(ts)
+            } else {
+                let days_to_keep: u64 = matches
+                  .value_of("time")
+                  .expect("--time argument missing")
+                  .parse()
+                  .expect("Invalid time format");
+                Duration::from_secs(days_to_keep * 24 * 3600)
             };
+
+            for project_path in &paths {
+                match remove_older_than(project_path, &keep_duration, dry_run) {
+                    Ok(cleaned_amount) if dry_run => {
+                        info!("Would clean: {}", format_bytes(cleaned_amount))
+                    }
+                    Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
+                    Err(e) => error!("Failed to clean {:?}: {}", project_path, e),
+                };
+            }
         }
     }
 }
