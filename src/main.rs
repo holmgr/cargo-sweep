@@ -238,7 +238,6 @@ fn main() {
             return;
         };
 
-
         if matches.is_present("installed") || matches.is_present("toolchains") {
             for project_path in &paths {
                 match remove_not_built_with(project_path, matches.value_of("toolchains"), dry_run) {
@@ -277,10 +276,10 @@ fn main() {
                 Duration::from(ts)
             } else {
                 let days_to_keep: u64 = matches
-                  .value_of("time")
-                  .expect("--time argument missing")
-                  .parse()
-                  .expect("Invalid time format");
+                    .value_of("time")
+                    .expect("--time argument missing")
+                    .parse()
+                    .expect("Invalid time format");
                 Duration::from_secs(days_to_keep * 24 * 3600)
             };
 
