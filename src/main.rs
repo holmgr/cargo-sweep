@@ -1,7 +1,6 @@
 use cargo_metadata::{Error, Metadata, MetadataCommand};
 use clap::{
     app_from_crate, crate_authors, crate_description, crate_name, crate_version, Arg, ArgGroup,
-    SubCommand,
 };
 use fern::colors::{Color, ColoredLevelConfig};
 use log::{debug, error, info};
@@ -123,175 +122,175 @@ fn metadata(path: &Path) -> Result<Metadata, Error> {
 
 fn main() {
     let matches = app_from_crate!()
-        .subcommand(
-            SubCommand::with_name("sweep")
-                .arg(
-                    Arg::with_name("verbose")
-                        .short("v")
-                        .help("Turn verbose information on"),
-                )
-                .arg(
-                    Arg::with_name("recursive")
-                        .short("r")
-                        .help("Apply on all projects below the given path"),
-                )
-                .arg(
-                    Arg::with_name("hidden")
-                        .long("hidden")
-                        .help("The `recursive` flag defaults to ignoring directories \
-                        that start with a `.`, `.git` for example is unlikely to include a \
-                        Cargo project, this flag changes it to look in them."),
-                )
-                .arg(
-                    Arg::with_name("dry-run")
-                        .short("d")
-                        .long("dry-run")
-                        .help("Dry run which will not delete any files"),
-                )
-                .arg(
-                    Arg::with_name("stamp")
-                        .short("s")
-                        .long("stamp")
-                        .help("Store timestamp file at the given path, is used by file option"),
-                )
-                .arg(
-                    Arg::with_name("file")
-                        .short("f")
-                        .long("file")
-                        .help("Load timestamp file in the given path, cleaning everything older"),
-                )
-                .arg(
-                    Arg::with_name("installed")
-                        .short("i")
-                        .long("installed")
-                        .help("Keep only artifacts made by Toolchains currently installed by rustup")
-                )
-                .arg(
-                    Arg::with_name("toolchains")
-                        .long("toolchains")
-                        .value_name("toolchains")
-                        .help("Toolchains (currently installed by rustup) that should have their artifacts kept.")
-                        .takes_value(true),
-                )
-                .arg(
-                    Arg::with_name("maxsize")
-                        .long("maxsize")
-                        .value_name("maxsize")
-                        .help("Remove oldest artifacts until the target directory is below the specified size in MB")
-                        .takes_value(true),
-                )
-                .arg(
-                    Arg::with_name("time")
-                        .short("t")
-                        .long("time")
-                        .value_name("days")
-                        .help("Number of days backwards to keep")
-                        .takes_value(true),
-                )
-                .group(
-                    ArgGroup::with_name("timestamp")
-                        .args(&["stamp", "file", "time", "installed", "toolchains", "maxsize"])
-                        .required(true),
-                )
-                .arg(
-                    Arg::with_name("path")
-                        .index(1)
-                        .value_name("path")
-                        .help("Path to check"),
-                ),
+        .arg(
+            // Fun trick from `cargo-criterion`
+            Arg::with_name("SUBCOMMAND")
+                .hidden(true)
+                .help("Cargo passes the name of the subcommand as the first param, so ignore it.")
+        )
+        .arg(
+            Arg::with_name("verbose")
+                .short("v")
+                .help("Turn verbose information on"),
+        )
+        .arg(
+            Arg::with_name("recursive")
+                .short("r")
+                .help("Apply on all projects below the given path"),
+        )
+        .arg(
+            Arg::with_name("hidden")
+                .long("hidden")
+                .help("The `recursive` flag defaults to ignoring directories \
+                that start with a `.`, `.git` for example is unlikely to include a \
+                Cargo project, this flag changes it to look in them."),
+        )
+        .arg(
+            Arg::with_name("dry-run")
+                .short("d")
+                .long("dry-run")
+                .help("Dry run which will not delete any files"),
+        )
+        .arg(
+            Arg::with_name("stamp")
+                .short("s")
+                .long("stamp")
+                .help("Store timestamp file at the given path, is used by file option"),
+        )
+        .arg(
+            Arg::with_name("file")
+                .short("f")
+                .long("file")
+                .help("Load timestamp file in the given path, cleaning everything older"),
+        )
+        .arg(
+            Arg::with_name("installed")
+                .short("i")
+                .long("installed")
+                .help("Keep only artifacts made by Toolchains currently installed by rustup")
+        )
+        .arg(
+            Arg::with_name("toolchains")
+                .long("toolchains")
+                .value_name("toolchains")
+                .help("Toolchains (currently installed by rustup) that should have their artifacts kept.")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("maxsize")
+                .long("maxsize")
+                .value_name("maxsize")
+                .help("Remove oldest artifacts until the target directory is below the specified size in MB")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("time")
+                .short("t")
+                .long("time")
+                .value_name("days")
+                .help("Number of days backwards to keep")
+                .takes_value(true),
+        )
+        .group(
+            ArgGroup::with_name("timestamp")
+                .args(&["stamp", "file", "time", "installed", "toolchains", "maxsize"])
+                .required(true),
+        )
+        .arg(
+            Arg::with_name("path")
+                .value_name("path")
+                .help("Path to check"),
         )
         .get_matches();
 
-    if let Some(matches) = matches.subcommand_matches("sweep") {
-        let verbose = matches.is_present("verbose");
-        setup_logging(verbose);
+    let verbose = matches.is_present("verbose");
+    setup_logging(verbose);
 
-        let dry_run = matches.is_present("dry-run");
+    let dry_run = matches.is_present("dry-run");
 
-        // Default to current invocation path.
-        let path = match matches.value_of("path") {
-            Some(p) => PathBuf::from(p),
-            None => env::current_dir().expect("Failed to get current directory"),
-        };
+    // Default to current invocation path.
+    let path = match matches.value_of("path") {
+        Some(p) => PathBuf::from(p),
+        None => env::current_dir().expect("Failed to get current directory"),
+    };
 
-        if matches.is_present("stamp") {
-            debug!("Writing timestamp file in: {:?}", path);
-            match Timestamp::new().store(path.as_path()) {
-                Ok(_) => {}
-                Err(e) => error!("Failed to write timestamp file: {}", e),
-            }
+    if matches.is_present("stamp") {
+        debug!("Writing timestamp file in: {:?}", path);
+        match Timestamp::new().store(path.as_path()) {
+            Ok(_) => {}
+            Err(e) => error!("Failed to write timestamp file: {}", e),
+        }
+        return;
+    }
+
+    let paths = if matches.is_present("recursive") {
+        find_cargo_projects(&path, matches.is_present("hidden"))
+    } else if let Ok(metadata) = metadata(&path) {
+        let out = Path::new(&metadata.target_directory).to_path_buf();
+        if out.exists() {
+            vec![out]
+        } else {
+            error!("Failed to clean {:?} as it does not exist.", out);
             return;
         }
+    } else {
+        error!("Failed to clean {:?} as it is not a cargo project.", path);
+        return;
+    };
 
-        let paths = if matches.is_present("recursive") {
-            find_cargo_projects(&path, matches.is_present("hidden"))
-        } else if let Ok(metadata) = metadata(&path) {
-            let out = Path::new(&metadata.target_directory).to_path_buf();
-            if out.exists() {
-                vec![out]
-            } else {
-                error!("Failed to clean {:?} as it does not exist.", out);
+    if matches.is_present("installed") || matches.is_present("toolchains") {
+        for project_path in &paths {
+            match remove_not_built_with(project_path, matches.value_of("toolchains"), dry_run) {
+                Ok(cleaned_amount) if dry_run => {
+                    info!("Would clean: {}", format_bytes(cleaned_amount))
+                }
+                Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
+                Err(e) => error!("Failed to clean {:?}: {}", project_path, e),
+            };
+        }
+    } else if matches.is_present("maxsize") {
+        // TODO: consider parsing units like GB, KB ...
+        let size = match matches
+            .value_of("maxsize")
+            .and_then(|s| s.parse::<u64>().ok())
+        {
+            Some(s) => s * 1024 * 1024,
+            None => {
+                error!("maxsize has to be a number");
                 return;
             }
-        } else {
-            error!("Failed to clean {:?} as it is not a cargo project.", path);
-            return;
         };
 
-        if matches.is_present("installed") || matches.is_present("toolchains") {
-            for project_path in &paths {
-                match remove_not_built_with(project_path, matches.value_of("toolchains"), dry_run) {
-                    Ok(cleaned_amount) if dry_run => {
-                        info!("Would clean: {}", format_bytes(cleaned_amount))
-                    }
-                    Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
-                    Err(e) => error!("Failed to clean {:?}: {}", project_path, e),
-                };
-            }
-        } else if matches.is_present("maxsize") {
-            // TODO: consider parsing units like GB, KB ...
-            let size = match matches
-                .value_of("maxsize")
-                .and_then(|s| s.parse::<u64>().ok())
-            {
-                Some(s) => s * 1024 * 1024,
-                None => {
-                    error!("maxsize has to be a number");
-                    return;
+        for project_path in &paths {
+            match remove_older_until_fits(project_path, size, dry_run) {
+                Ok(cleaned_amount) if dry_run => {
+                    info!("Would clean: {}", format_bytes(cleaned_amount))
                 }
+                Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
+                Err(e) => error!("Failed to clean {:?}: {}", project_path, e),
             };
-
-            for project_path in &paths {
-                match remove_older_until_fits(project_path, size, dry_run) {
-                    Ok(cleaned_amount) if dry_run => {
-                        info!("Would clean: {}", format_bytes(cleaned_amount))
-                    }
-                    Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
-                    Err(e) => error!("Failed to clean {:?}: {}", project_path, e),
-                };
-            }
+        }
+    } else {
+        let keep_duration = if matches.is_present("file") {
+            let ts = Timestamp::load(path.as_path()).expect("Failed to load timestamp file");
+            Duration::from(ts)
         } else {
-            let keep_duration = if matches.is_present("file") {
-                let ts = Timestamp::load(path.as_path()).expect("Failed to load timestamp file");
-                Duration::from(ts)
-            } else {
-                let days_to_keep: u64 = matches
-                    .value_of("time")
-                    .expect("--time argument missing")
-                    .parse()
-                    .expect("Invalid time format");
-                Duration::from_secs(days_to_keep * 24 * 3600)
-            };
+            let days_to_keep: u64 = matches
+                .value_of("time")
+                .expect("--time argument missing")
+                .parse()
+                .expect("Invalid time format");
+            Duration::from_secs(days_to_keep * 24 * 3600)
+        };
 
-            for project_path in &paths {
-                match remove_older_than(project_path, &keep_duration, dry_run) {
-                    Ok(cleaned_amount) if dry_run => {
-                        info!("Would clean: {}", format_bytes(cleaned_amount))
-                    }
-                    Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
-                    Err(e) => error!("Failed to clean {:?}: {}", project_path, e),
-                };
-            }
+        for project_path in &paths {
+            match remove_older_than(project_path, &keep_duration, dry_run) {
+                Ok(cleaned_amount) if dry_run => {
+                    info!("Would clean: {}", format_bytes(cleaned_amount))
+                }
+                Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
+                Err(e) => error!("Failed to clean {:?}: {}", project_path, e),
+            };
         }
     }
 }
