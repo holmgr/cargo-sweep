@@ -218,7 +218,7 @@ fn main() {
             debug!("Writing timestamp file in: {:?}", path);
             match Timestamp::new().store(path.as_path()) {
                 Ok(_) => {}
-                Err(e) => error!("Failed to write timestamp file: {}", e),
+                Err(e) => error!("Failed to write timestamp file: {:?}", e),
             }
             return;
         }
@@ -245,7 +245,7 @@ fn main() {
                         info!("Would clean: {}", format_bytes(cleaned_amount))
                     }
                     Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
-                    Err(e) => error!("Failed to clean {:?}: {}", project_path, e),
+                    Err(e) => error!("Failed to clean {:?}: {:?}", project_path, e),
                 };
             }
         } else if matches.is_present("maxsize") {
@@ -267,7 +267,7 @@ fn main() {
                         info!("Would clean: {}", format_bytes(cleaned_amount))
                     }
                     Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
-                    Err(e) => error!("Failed to clean {:?}: {}", project_path, e),
+                    Err(e) => error!("Failed to clean {:?}: {:?}", project_path, e),
                 };
             }
         } else {
@@ -289,7 +289,7 @@ fn main() {
                         info!("Would clean: {}", format_bytes(cleaned_amount))
                     }
                     Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
-                    Err(e) => error!("Failed to clean {:?}: {}", project_path, e),
+                    Err(e) => error!("Failed to clean {:?}: {:?}", project_path, e),
                 };
             }
         }
