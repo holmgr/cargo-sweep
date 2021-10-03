@@ -149,6 +149,12 @@ fn main() {
                         .help("Dry run which will not delete any files"),
                 )
                 .arg(
+                    Arg::with_name("debug-output")
+                        .short("D")
+                        .long("debug")
+                        .help("Print every matched file"),
+                )
+                .arg(
                     Arg::with_name("stamp")
                         .short("s")
                         .long("stamp")
@@ -207,6 +213,7 @@ fn main() {
         setup_logging(verbose);
 
         let dry_run = matches.is_present("dry-run");
+        let debug_output = matches.is_present("debug-output");
 
         // Default to current invocation path.
         let path = match matches.value_of("path") {
@@ -240,7 +247,8 @@ fn main() {
 
         if matches.is_present("installed") || matches.is_present("toolchains") {
             for project_path in &paths {
-                match remove_not_built_with(project_path, matches.value_of("toolchains"), dry_run) {
+                if !debug_output { info!("{:?}:", project_path) };
+                match remove_not_built_with(project_path, matches.value_of("toolchains"), dry_run, debug_output) {
                     Ok(cleaned_amount) if dry_run => {
                         info!("Would clean: {}", format_bytes(cleaned_amount))
                     }
@@ -262,7 +270,8 @@ fn main() {
             };
 
             for project_path in &paths {
-                match remove_older_until_fits(project_path, size, dry_run) {
+                if !debug_output { info!("{:?}:", project_path) };
+                match remove_older_until_fits(project_path, size, dry_run, debug_output) {
                     Ok(cleaned_amount) if dry_run => {
                         info!("Would clean: {}", format_bytes(cleaned_amount))
                     }
@@ -284,7 +293,8 @@ fn main() {
             };
 
             for project_path in &paths {
-                match remove_older_than(project_path, &keep_duration, dry_run) {
+                if !debug_output { info!("{:?}:", project_path) };
+                match remove_older_than(project_path, &keep_duration, dry_run, debug_output) {
                     Ok(cleaned_amount) if dry_run => {
                         info!("Would clean: {}", format_bytes(cleaned_amount))
                     }
