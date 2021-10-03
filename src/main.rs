@@ -143,10 +143,10 @@ fn main() {
                         Cargo project, this flag changes it to look in them."),
                 )
                 .arg(
-                    Arg::with_name("dry-run")
+                    Arg::with_name("deletion")
                         .short("d")
-                        .long("dry-run")
-                        .help("Dry run which will not delete any files"),
+                        .long("delete")
+                        .help("Do deletion of matching files (default is dryrun)"),
                 )
                 .arg(
                     Arg::with_name("debug-output")
@@ -212,7 +212,7 @@ fn main() {
         let verbose = matches.is_present("verbose");
         setup_logging(verbose);
 
-        let dry_run = matches.is_present("dry-run");
+        let deletion = matches.is_present("deletion");
         let debug_output = matches.is_present("debug-output");
 
         // Default to current invocation path.
@@ -248,11 +248,12 @@ fn main() {
         if matches.is_present("installed") || matches.is_present("toolchains") {
             for project_path in &paths {
                 if !debug_output { info!("{:?}:", project_path) };
-                match remove_not_built_with(project_path, matches.value_of("toolchains"), dry_run, debug_output) {
-                    Ok(cleaned_amount) if dry_run => {
-                        info!("Would clean: {}", format_bytes(cleaned_amount))
-                    }
-                    Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
+                match remove_not_built_with(project_path, matches.value_of("toolchains"), deletion, debug_output) {
+                    Ok(cleaned_amount) => {
+                        info!("{}: {}",
+                              if !deletion {"Would clean"} else {"Cleaned"},
+                              format_bytes(cleaned_amount))
+                    },
                     Err(e) => error!("Failed to clean {:?}: {}", project_path, e),
                 };
             }
@@ -271,11 +272,12 @@ fn main() {
 
             for project_path in &paths {
                 if !debug_output { info!("{:?}:", project_path) };
-                match remove_older_until_fits(project_path, size, dry_run, debug_output) {
-                    Ok(cleaned_amount) if dry_run => {
-                        info!("Would clean: {}", format_bytes(cleaned_amount))
-                    }
-                    Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
+                match remove_older_until_fits(project_path, size, deletion, debug_output) {
+                    Ok(cleaned_amount) => {
+                        info!("{}: {}",
+                              if !deletion {"Would clean"} else {"Cleaned"},
+                              format_bytes(cleaned_amount))
+                    },
                     Err(e) => error!("Failed to clean {:?}: {}", project_path, e),
                 };
             }
@@ -294,11 +296,12 @@ fn main() {
 
             for project_path in &paths {
                 if !debug_output { info!("{:?}:", project_path) };
-                match remove_older_than(project_path, &keep_duration, dry_run, debug_output) {
-                    Ok(cleaned_amount) if dry_run => {
-                        info!("Would clean: {}", format_bytes(cleaned_amount))
+                match remove_older_than(project_path, &keep_duration, deletion, debug_output) {
+                    Ok(cleaned_amount) => {
+                        info!("{}: {}",
+                              if !deletion {"Would clean"} else {"Cleaned"},
+                              format_bytes(cleaned_amount))
                     }
-                    Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
                     Err(e) => error!("Failed to clean {:?}: {}", project_path, e),
                 };
             }
