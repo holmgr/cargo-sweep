@@ -214,7 +214,7 @@ fn main() {
     // Default to current invocation path.
     let path = match matches.value_of("path") {
         Some(p) => PathBuf::from(p),
-        None => env::current_dir().expect("Failed to get current directory"),
+        None => PathBuf::from("."),
     };
 
     if matches.is_present("stamp") {
@@ -241,11 +241,9 @@ fn main() {
         return;
     };
 
+    let topdir: PathBuf = std::env::current_dir().ok().unwrap();
     if matches.is_present("installed") || matches.is_present("toolchains") {
         for project_path in &paths {
-            if !debug_output {
-                info!("{:?}:", project_path)
-            };
             match remove_not_built_with(
                 project_path,
                 matches.value_of("toolchains"),
@@ -254,12 +252,13 @@ fn main() {
             ) {
                 Ok(cleaned_amount) => {
                     info!(
-                        "{}: {}",
-                        if !deletion { "Would clean" } else { "Cleaned" },
-                        format_bytes(cleaned_amount)
+                        "{}: {} {}",
+                        project_path.strip_prefix(&topdir).ok().unwrap().display(),
+                        format_bytes(cleaned_amount),
+                        if !deletion { "would be cleaned" } else { "cleaned" },
                     )
                 }
-                Err(e) => error!("Failed to clean {:?}: {}", project_path, e),
+                Err(e) => error!("failed to clean {}: {}", project_path.display(), e),
             };
         }
     } else if matches.is_present("maxsize") {
