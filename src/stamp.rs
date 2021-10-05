@@ -49,6 +49,6 @@ impl Default for Timestamp {
 /// Warning: This will return a zero duration if it fails to convert.
 impl From<Timestamp> for Duration {
     fn from(timestamp: Timestamp) -> Self {
-        timestamp.0.elapsed().unwrap_or(Duration::from_secs(0))
+        timestamp.0.elapsed().unwrap_or_else(|_| Duration::from_secs(0))
     }
 }
