@@ -303,7 +303,11 @@ fn lookup_from_names<'a>(
         let out = Command::new("rustc").args(args).output()?;
 
         if !out.status.success() {
-            bail!(String::from_utf8_lossy(&out.stdout).to_string());
+            if !out.stdout.is_empty() {
+                bail!(String::from_utf8_lossy(&out.stdout).to_string());
+            } else {
+                bail!(String::from_utf8_lossy(&out.stderr).to_string());
+            }
         }
         Ok(hash_u64(&String::from_utf8_lossy(&out.stdout)))
     })
