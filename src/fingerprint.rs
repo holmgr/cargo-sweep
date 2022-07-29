@@ -292,6 +292,36 @@ fn lookup_all_fingerprint_dirs(dir: &Path) -> impl Iterator<Item = DirEntry> {
         })
 }
 
+fn is_custom_toolchain(toolchain: &str) -> bool {
+    if toolchain.is_empty() {
+        // unsure
+        return false;
+    }
+
+    let is_named_channel = ["stable", "beta", "nightly"].iter().any(|channel| {
+        toolchain == *channel || toolchain.starts_with(&(channel.to_string() + "-"))
+    });
+    if is_named_channel {
+        return false;
+    }
+
+    // versioned toolchain: 1.60 or 1.60.0
+    let first_segment = toolchain
+        .split_once('-')
+        .map_or(toolchain, |(first, _)| first);
+    let mut number_segments = 0;
+    let all_numbers = first_segment.split('.').all(|s| {
+        number_segments += 1;
+        !s.is_empty() && s.chars().all(|c| c.is_ascii_digit())
+    });
+    let is_versioned_toolchain = all_numbers && (number_segments == 2 || number_segments == 3);
+    if is_versioned_toolchain {
+        return false;
+    }
+
+    true
+}
+
 fn lookup_from_names(
     iter: impl Iterator<Item = Option<impl AsRef<str>>>,
 ) -> Result<HashSet<u64>, Error> {
@@ -307,6 +337,11 @@ fn lookup_from_names(
             .context("failed to run `rustc`")?;
 
         if !out.status.success() {
+            let toolchain = x.as_ref().map_or("", |t| t.as_ref());
+            if is_custom_toolchain(toolchain) {
+                return Ok(None);
+            }
+
             let err = if out.stdout.is_empty() {
                 out.stderr
             } else {
@@ -318,20 +353,20 @@ fn lookup_from_names(
                 }
                 out.stdout
             };
-            let toolchain = x.as_ref().map_or("", |t| t.as_ref());
             bail!(
                 "failed to determine fingerprint for toolchain {}: {}",
                 toolchain,
                 String::from_utf8_lossy(&err).to_string()
             );
         }
-        Ok(hash_u64(&String::from_utf8_lossy(&out.stdout)))
+        Ok(Some(hash_u64(&String::from_utf8_lossy(&out.stdout))))
     })
     .chain(
         // Some fingerprints made to track the output of build scripts claim to have been built with a rust that hashes to 0.
         // This can be fixed in cargo, but for now this makes sure we don't clean the files.
-        Some(Ok(0)),
+        std::iter::once(Ok(Some(0))),
     )
+    .filter_map(|x| x.transpose())
     .collect()
 }
 
@@ -475,4 +510,30 @@ pub fn remove_older_until_fits(path: &Path, target_size: u64, dry_run: bool) -> 
     }
 
     Ok(total_disk_space)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_custom_toolchain;
+
+    #[test]
+    fn test_custom_toolchain() {
+        #[rustfmt::skip]
+        let custom_toolchains = [
+            "1", "1.", "1.x", "1.x.x", "stablex", "stage1", "r2-stage1", "e9b1f9380fec42aa93b6998a1e1a1dc2ae9adaff",
+        ];
+        for toolchain in custom_toolchains {
+            assert!(is_custom_toolchain(toolchain), "{}", toolchain);
+        }
+
+        #[rustfmt::skip]
+        let standard_toolchains = [
+            "stable", "beta", "nightly", "stable-x86_64-unknown-linux-gnu",
+            "beta-2022-05-20-x86_64-unknown-linux-gnu", "1.22-x86_64-unknown-linux-gnu",
+            "1.22", "1.22.0", "1.0.0",
+        ];
+        for toolchain in standard_toolchains {
+            assert!(!is_custom_toolchain(toolchain), "{}", toolchain);
+        }
+    }
 }
