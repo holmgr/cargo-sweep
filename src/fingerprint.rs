@@ -297,6 +297,7 @@ fn lookup_from_names(
 ) -> Result<HashSet<u64>, Error> {
     iter.map(|x| {
         let args = x
+            .as_ref()
             .into_iter()
             .map(|toolchain| format!("+{}", toolchain.as_ref()))
             .chain(Some("-vV".to_string()));
@@ -306,11 +307,23 @@ fn lookup_from_names(
             .context("failed to run `rustc`")?;
 
         if !out.status.success() {
-            if !out.stdout.is_empty() {
-                bail!(String::from_utf8_lossy(&out.stdout).to_string());
+            let err = if out.stdout.is_empty() {
+                out.stderr
             } else {
-                bail!(String::from_utf8_lossy(&out.stderr).to_string());
-            }
+                if !out.stderr.is_empty() {
+                    warn!(
+                        "stderr from rustc: {}",
+                        String::from_utf8_lossy(&out.stderr)
+                    );
+                }
+                out.stdout
+            };
+            let toolchain = x.as_ref().map_or("", |t| t.as_ref());
+            bail!(
+                "failed to determine fingerprint for toolchain {}: {}",
+                toolchain,
+                String::from_utf8_lossy(&err).to_string()
+            );
         }
         Ok(hash_u64(&String::from_utf8_lossy(&out.stdout)))
     })
