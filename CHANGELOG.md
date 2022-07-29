@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Don't print colors when stdout is not a terminal [#69](https://github.com/holmgr/cargo-sweep/pull/69)
 - Kibibytes are now printed as `KiB`, not `kiB` [#69](https://github.com/holmgr/cargo-sweep/pull/69)
+- No longer give a hard error when a custom toolchain gives an error [#67](https://github.com/holmgr/cargo-sweep/pull/67)
 
 ### Fixed
 
