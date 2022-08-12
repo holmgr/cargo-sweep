@@ -1,4 +1,4 @@
-use failure::Error;
+use anyhow::Error;
 use serde_derive::{Deserialize, Serialize};
 use serde_json::{from_str, to_string};
 use std::{

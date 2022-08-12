@@ -1,5 +1,5 @@
 #![allow(deprecated)]
-use failure::{bail, Error};
+use anyhow::{bail, Error};
 use log::{debug, info, warn};
 use serde_derive::Deserialize;
 use serde_json::from_str;
