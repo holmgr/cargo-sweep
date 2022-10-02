@@ -11,6 +11,7 @@ readme = "README.md"
 
 [dependencies]
 clap = "2.32.0"
+crossterm = "0.25.0"
 walkdir = "2"
 anyhow = "1.0.43"
 log = "0.4.6"
