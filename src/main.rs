@@ -3,6 +3,7 @@ use clap::{
     app_from_crate, crate_authors, crate_description, crate_name, crate_version, Arg, ArgGroup,
     SubCommand,
 };
+use crossterm::tty::IsTty;
 use fern::colors::{Color, ColoredLevelConfig};
 use log::{debug, error, info};
 use std::{
@@ -36,18 +37,24 @@ fn setup_logging(verbose: bool) {
         log::LevelFilter::Info
     };
 
+    let isatty = std::io::stdout().is_tty();
+
     let colors_level = colors_line.info(Color::Green);
     fern::Dispatch::new()
         .format(move |out, message, record| {
-            out.finish(format_args!(
-                "{color_line}[{level}{color_line}] {message}\x1B[0m",
-                color_line = format_args!(
-                    "\x1B[{}m",
-                    colors_line.get_color(&record.level()).to_fg_str()
-                ),
-                level = colors_level.color(record.level()),
-                message = message,
-            ));
+            if isatty {
+                out.finish(format_args!(
+                    "{color_line}[{level}{color_line}] {message}\x1B[0m",
+                    color_line = format_args!(
+                        "\x1B[{}m",
+                        colors_line.get_color(&record.level()).to_fg_str()
+                    ),
+                    level = colors_level.color(record.level()),
+                    message = message,
+                ))
+            } else {
+                out.finish(format_args!("[{}] {message}", record.level()))
+            }
         })
         .level(level)
         .level_for("pretty_colored", log::LevelFilter::Trace)
