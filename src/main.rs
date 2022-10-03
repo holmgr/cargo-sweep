@@ -132,7 +132,7 @@ fn metadata(path: &Path) -> Result<Metadata, Error> {
 
 fn main() {
     if let Err(err) = run() {
-        println!("{err:#?}");
+        error!("{err:?}");
     }
 }
 
@@ -238,15 +238,17 @@ fn run() -> anyhow::Result<()> {
 
         let paths = if matches.is_present("recursive") {
             find_cargo_projects(&path, matches.is_present("hidden"))
-        } else if let Ok(metadata) = metadata(&path) {
+        } else {
+            let metadata = metadata(&path).context(format!(
+                "Failed to gather metadata for {:?}",
+                path.display()
+            ))?;
             let out = Path::new(&metadata.target_directory).to_path_buf();
             if out.exists() {
                 vec![out]
             } else {
                 anyhow::bail!("Failed to clean {:?} as it does not exist.", out);
             }
-        } else {
-            anyhow::bail!("Failed to clean {:?} as it is not a cargo project.", path);
         };
 
         if matches.is_present("installed") || matches.is_present("toolchains") {
@@ -256,7 +258,10 @@ fn run() -> anyhow::Result<()> {
                         info!("Would clean: {}", format_bytes(cleaned_amount))
                     }
                     Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
-                    Err(e) => error!("Failed to clean {:?}: {:?}", project_path, e),
+                    Err(e) => error!(
+                        "{:?}",
+                        e.context(format!("Failed to clean {:?}", project_path))
+                    ),
                 };
             }
         } else if matches.is_present("maxsize") {

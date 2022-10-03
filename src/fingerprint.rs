@@ -1,5 +1,5 @@
 #![allow(deprecated)]
-use anyhow::{bail, Error};
+use anyhow::{bail, Context, Error};
 use log::{debug, info, warn};
 use serde_derive::Deserialize;
 use serde_json::from_str;
@@ -300,7 +300,10 @@ fn lookup_from_names<'a>(
             .into_iter()
             .map(|toolchain| format!("+{}", toolchain.as_ref()))
             .chain(Some("-vV".to_string()));
-        let out = Command::new("rustc").args(args).output()?;
+        let out = Command::new("rustc")
+            .args(args)
+            .output()
+            .context("failed to run `rustc`")?;
 
         if !out.status.success() {
             if !out.stdout.is_empty() {
