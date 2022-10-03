@@ -103,11 +103,14 @@ fn count_cleaned(target: &TempDir, args: &[&str], old_size: u64) -> Result<u64> 
 
     // Make sure this is accurate.
     let new_size = get_size(target.path())?;
-    // Cargo-sweep and `get_size` appear to have different rounding behavior.
-    // Make sure this is within one byte.
+    // Due to rounding and truncation we might have an inexact result. Make sure these are within 1% of each other,
+    // but don't require an exact match.
+    let calculated_size = old_size - cleaned;
+    let diff = new_size.abs_diff(calculated_size);
+    let one_percent = old_size as f64 * 0.01;
     assert!(
-        old_size - cleaned - new_size <= 1,
-        "new_size={}, old_size={}, cleaned={}",
+        diff <= one_percent as u64,
+        "new_size={}, old_size={}, cleaned={}, diff={diff}, 1%={one_percent}",
         new_size,
         old_size,
         cleaned
