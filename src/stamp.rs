@@ -1,4 +1,4 @@
-use anyhow::Error;
+use anyhow::{Context, Error};
 use serde_derive::{Deserialize, Serialize};
 use serde_json::{from_str, to_string};
 use std::{
@@ -31,7 +31,8 @@ impl Timestamp {
     pub fn load(target_dir: &Path) -> Result<Timestamp, Error> {
         let mut path = target_dir.to_path_buf();
         path.push("sweep.timestamp");
-        let mut file = File::open(&path)?;
+        let mut file =
+            File::open(&path).context(format!("failed to read stamp file {}", path.display()))?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
         remove_file(&path)?;

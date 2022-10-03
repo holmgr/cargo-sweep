@@ -1,3 +1,4 @@
+use anyhow::Context;
 use cargo_metadata::{Error, Metadata, MetadataCommand};
 use clap::{
     app_from_crate, crate_authors, crate_description, crate_name, crate_version, Arg, ArgGroup,
@@ -129,6 +130,12 @@ fn metadata(path: &Path) -> Result<Metadata, Error> {
 }
 
 fn main() {
+    if let Err(err) = run() {
+        println!("{err:#?}");
+    }
+}
+
+fn run() -> anyhow::Result<()> {
     let matches = app_from_crate!()
         .subcommand(
             SubCommand::with_name("sweep")
@@ -223,11 +230,9 @@ fn main() {
 
         if matches.is_present("stamp") {
             debug!("Writing timestamp file in: {:?}", path);
-            match Timestamp::new().store(path.as_path()) {
-                Ok(_) => {}
-                Err(e) => error!("Failed to write timestamp file: {:?}", e),
-            }
-            return;
+            return Timestamp::new()
+                .store(path.as_path())
+                .context("Failed to write timestamp file");
         }
 
         let paths = if matches.is_present("recursive") {
@@ -237,12 +242,10 @@ fn main() {
             if out.exists() {
                 vec![out]
             } else {
-                error!("Failed to clean {:?} as it does not exist.", out);
-                return;
+                anyhow::bail!("Failed to clean {:?} as it does not exist.", out);
             }
         } else {
-            error!("Failed to clean {:?} as it is not a cargo project.", path);
-            return;
+            anyhow::bail!("Failed to clean {:?} as it is not a cargo project.", path);
         };
 
         if matches.is_present("installed") || matches.is_present("toolchains") {
@@ -263,8 +266,7 @@ fn main() {
             {
                 Some(s) => s * 1024 * 1024,
                 None => {
-                    error!("maxsize has to be a number");
-                    return;
+                    anyhow::bail!("maxsize has to be a number");
                 }
             };
 
@@ -301,4 +303,6 @@ fn main() {
             }
         }
     }
+
+    Ok(())
 }

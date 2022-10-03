@@ -13,6 +13,18 @@ use predicates::prelude::PredicateBooleanExt;
 use predicates::str::contains;
 use tempfile::{tempdir, TempDir};
 
+struct AnyhowWithContext(anyhow::Error);
+impl Debug for AnyhowWithContext {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:#?}", self.0)
+    }
+}
+impl<T: Into<anyhow::Error>> From<T> for AnyhowWithContext {
+    fn from(err: T) -> Self {
+        Self(err.into())
+    }
+}
+
 fn project_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
@@ -44,53 +56,107 @@ fn build() -> Result<(u64, TempDir)> {
     Ok((new_size, target))
 }
 
-fn count_cleaned(target: &TempDir, args: &[&str]) -> anyhow::Result<u64> {
+fn clean_and_parse(target: &TempDir, args: &[&str]) -> Result<u64> {
+    let dry_run = args.iter().any(|&f| f == "-d" || f == "--dry-run");
+
+    let (remove_msg, clean_msg) = if dry_run {
+        ("Would remove:", "Would clean: ")
+    } else {
+        ("Successfully removed", "Cleaned ")
+    };
     let assertion = sweep(args)
         .env("CARGO_TARGET_DIR", target.path())
         .assert()
         .success()
-        .stdout(contains("Successfully removed").and(contains("Cleaned")));
+        .stdout(contains(remove_msg).and(contains(clean_msg)));
+
     let output = assertion.get_output();
     assert!(output.stderr.is_empty());
     let amount = std::str::from_utf8(&output.stdout)?
         .lines()
         .last()
         .unwrap()
-        .split("Cleaned ")
+        .split(clean_msg)
         .nth(1)
         .unwrap();
-    Ok(amount
+    let cleaned = amount
         .parse::<human_size::Size>()
         .context(format!("failed to parse amount {amount}"))?
-        .to_bytes())
+        .to_bytes();
+
+    Ok(cleaned)
 }
 
-#[test]
-fn remove_all() -> Result<(), AnyhowWithContext> {
-    let (size, target) = build()?;
-    let cleaned = count_cleaned(&target, &["--time", "0"])?;
+fn count_cleaned(target: &TempDir, args: &[&str], old_size: u64) -> Result<u64> {
+    let cleaned = clean_and_parse(target, args)?;
+
+    // Make sure this is accurate.
     let new_size = get_size(target.path())?;
     // Cargo-sweep and `get_size` appear to have different rounding behavior.
     // Make sure this is within one byte.
     assert!(
-        size - cleaned - new_size <= 1,
+        old_size - cleaned - new_size <= 1,
         "new_size={}, old_size={}, cleaned={}",
         new_size,
-        size,
+        old_size,
         cleaned
     );
+
+    Ok(cleaned)
+}
+
+fn count_cleaned_dry_run(target: &TempDir, args: &[&str], old_size: u64) -> Result<u64> {
+    let mut args = args.to_vec();
+    args.push("--dry-run");
+    let cleaned = clean_and_parse(target, &args)?;
+
+    let new_size = get_size(target.path())?;
+    assert_eq!(old_size, new_size);
+
+    Ok(cleaned)
+}
+
+#[test]
+fn all_flags() -> Result<(), AnyhowWithContext> {
+    let all_combos = [
+        ["--time", "0"].as_slice(),
+        &["--maxsize", "0"],
+        // TODO(#67): enable this test
+        // &["--installed"],
+    ];
+
+    for args in all_combos {
+        let (size, target) = build()?;
+
+        let expected_cleaned = count_cleaned_dry_run(&target, args, size)?;
+        assert!(expected_cleaned > 0);
+
+        let actual_cleaned = count_cleaned(&target, args, size)?;
+        assert_eq!(actual_cleaned, expected_cleaned);
+    }
 
     Ok(())
 }
 
-struct AnyhowWithContext(anyhow::Error);
-impl Debug for AnyhowWithContext {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:#?}", self.0)
-    }
-}
-impl<T: Into<anyhow::Error>> From<T> for AnyhowWithContext {
-    fn from(err: T) -> Self {
-        Self(err.into())
-    }
+#[test]
+fn stamp_file() -> Result<(), AnyhowWithContext> {
+    let (size, target) = build()?;
+
+    // Create a stamp file for --file.
+    let assert = sweep(dbg!(&["--stamp", "-v"])).assert().success();
+    println!("{}", std::str::from_utf8(&assert.get_output().stdout).unwrap());
+    assert!(project_dir().join("sweep.timestamp").exists());
+
+    let args = &["--file"];
+    let expected_cleaned = count_cleaned_dry_run(&target, args, size)?;
+    assert!(expected_cleaned > 0);
+
+    // For some reason, we delete the stamp file after `--file` :(
+    // Recreate it.
+    sweep(dbg!(&["--stamp"])).assert().success();
+
+    let actual_cleaned = count_cleaned(&target, args, size)?;
+    assert_eq!(actual_cleaned, expected_cleaned);
+
+    Ok(())
 }
