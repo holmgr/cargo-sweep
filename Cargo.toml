@@ -27,3 +27,4 @@ fs_extra = "1.2.0"
 human-size = "0.4.2"
 predicates = "2.1.1"
 tempfile = "3.3.0"
+which = { version = "4.3.0", default-features = false }

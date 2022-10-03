@@ -1,7 +1,8 @@
 use std::{
     borrow::BorrowMut,
     fmt::Debug,
-    path::{Path, PathBuf}, borrow::BorrowMut,
+    fs::Permissions,
+    path::{Path, PathBuf},
 };
 
 use anyhow::{Context, Result};
@@ -11,6 +12,7 @@ use fs_extra::dir::get_size;
 use predicates::prelude::PredicateBooleanExt;
 use predicates::str::contains;
 use tempfile::{tempdir, TempDir};
+use which::which;
 
 struct AnyhowWithContext(anyhow::Error);
 impl Debug for AnyhowWithContext {
@@ -23,6 +25,7 @@ impl<T: Into<anyhow::Error>> From<T> for AnyhowWithContext {
         Self(err.into())
     }
 }
+type TestResult = Result<(), AnyhowWithContext>;
 
 fn test_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests")
@@ -125,7 +128,7 @@ fn count_cleaned_dry_run(target: &TempDir, args: &[&str], old_size: u64) -> Resu
 }
 
 #[test]
-fn all_flags() -> Result<(), AnyhowWithContext> {
+fn all_flags() -> TestResult {
     let all_combos = [
         ["--time", "0"].as_slice(),
         &["--maxsize", "0"],
@@ -147,7 +150,7 @@ fn all_flags() -> Result<(), AnyhowWithContext> {
 }
 
 #[test]
-fn stamp_file() -> Result<(), AnyhowWithContext> {
+fn stamp_file() -> TestResult {
     let (size, target) = build("sample-project")?;
 
     // Create a stamp file for --file.
@@ -175,7 +178,7 @@ fn stamp_file() -> Result<(), AnyhowWithContext> {
 }
 
 #[test]
-fn hidden() -> Result<(), AnyhowWithContext> {
+fn hidden() -> TestResult {
     // This path is so strange because we use CARGO_TARGET_DIR to set the target to a temporary directory.
     // So we can't let cargo-sweep discover any other projects, or it will think they share the same directory as this hidden project.
     let (size, target) = build("fresh-prefix/.hidden/hidden-project")?;
@@ -195,6 +198,35 @@ fn hidden() -> Result<(), AnyhowWithContext> {
         size,
         get_size(target.path())?
     );
+
+    Ok(())
+}
+
+#[test]
+#[cfg(unix)]
+/// Setup a PATH that has a rustc that always gives an error. Make sure we see the error output.
+fn error_output() -> TestResult {
+    use std::{io::ErrorKind, os::unix::prelude::PermissionsExt};
+
+    let cargo = which("cargo")?;
+    match std::os::unix::fs::symlink(&cargo, test_dir().join("cargo")) {
+        Err(e) if e.kind() == ErrorKind::AlreadyExists => {}
+        Err(e) => return Err(e.into()),
+        Ok(_) => {}
+    }
+
+    // lmao
+    const FAKE_RUSTC: &str = r#"#!/bin/sh
+        echo "oh no an error" >&2
+        exit 1
+    "#;
+    let rustc = test_dir().join("rustc");
+    std::fs::write(&rustc, FAKE_RUSTC)?;
+    std::fs::set_permissions(&rustc, Permissions::from_mode(0o700))?;
+
+    build("sample-project")?;
+    let assert = run(sweep(&["--installed"]).env("PATH", test_dir()));
+    assert.stdout(contains("oh no an error"));
 
     Ok(())
 }
