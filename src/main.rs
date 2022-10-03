@@ -94,6 +94,7 @@ fn find_cargo_projects(root: &Path, include_hidden: bool) -> Vec<PathBuf> {
         if let Ok(entry) = entry {
             if entry.file_type().is_dir() {
                 if !include_hidden && is_hidden(&entry) {
+                    debug!("skip hidden folder {}", entry.path().display());
                     iter.skip_current_dir();
                     continue;
                 }

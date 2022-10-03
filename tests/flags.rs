@@ -1,11 +1,10 @@
 use std::{
     borrow::BorrowMut,
     fmt::Debug,
-    path::{Path, PathBuf},
+    path::{Path, PathBuf}, borrow::BorrowMut,
 };
 
 use anyhow::{Context, Result};
-use assert_cmd::cargo::cargo_bin;
 use assert_cmd::Command;
 use assert_cmd::{assert::Assert, cargo::cargo_bin};
 use fs_extra::dir::get_size;
@@ -25,32 +24,44 @@ impl<T: Into<anyhow::Error>> From<T> for AnyhowWithContext {
     }
 }
 
-fn project_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("sample-project")
+fn test_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests")
 }
-fn cargo() -> Command {
+
+fn project_dir(project: &str) -> PathBuf {
+    test_dir().join(project)
+}
+
+fn cargo(project: &str) -> Command {
     let mut cmd = Command::new(env!("CARGO"));
-    cmd.current_dir(project_dir());
+    cmd.current_dir(project_dir(project));
     cmd
 }
 
 fn sweep(args: &[&str]) -> Command {
     let mut cmd = Command::new(cargo_bin("cargo-sweep"));
-    cmd.arg("sweep").current_dir(project_dir()).args(args);
+    cmd.arg("sweep")
+        .current_dir(project_dir("sample-project"))
+        .args(args);
     cmd
 }
 
+fn run(mut cmd: impl BorrowMut<Command>) -> Assert {
+    let assert = cmd.borrow_mut().assert().success();
+    let out = assert.get_output();
+    let str = |s| std::str::from_utf8(s).unwrap();
+    print!("{}", str(&out.stdout));
+    eprint!("{}", str(&out.stderr));
+    assert
+}
+
 /// Returns the size of the build directory.
-fn build() -> Result<(u64, TempDir)> {
+fn build(project: &str) -> Result<(u64, TempDir)> {
     let target = tempdir()?;
     let old_size = get_size(target.path())?;
-    cargo()
+    run(cargo(project)
         .arg("build")
-        .env("CARGO_TARGET_DIR", target.path())
-        .assert()
-        .success();
+        .env("CARGO_TARGET_DIR", target.path()));
     let new_size = get_size(target.path())?;
     assert!(new_size > old_size, "cargo didn't build anything");
     Ok((new_size, target))
@@ -64,10 +75,7 @@ fn clean_and_parse(target: &TempDir, args: &[&str]) -> Result<u64> {
     } else {
         ("Successfully removed", "Cleaned ")
     };
-    let assertion = sweep(args)
-        .env("CARGO_TARGET_DIR", target.path())
-        .assert()
-        .success()
+    let assertion = run(sweep(args).env("CARGO_TARGET_DIR", target.path()))
         .stdout(contains(remove_msg).and(contains(clean_msg)));
 
     let output = assertion.get_output();
@@ -126,7 +134,7 @@ fn all_flags() -> Result<(), AnyhowWithContext> {
     ];
 
     for args in all_combos {
-        let (size, target) = build()?;
+        let (size, target) = build("sample-project")?;
 
         let expected_cleaned = count_cleaned_dry_run(&target, args, size)?;
         assert!(expected_cleaned > 0);
@@ -140,12 +148,17 @@ fn all_flags() -> Result<(), AnyhowWithContext> {
 
 #[test]
 fn stamp_file() -> Result<(), AnyhowWithContext> {
-    let (size, target) = build()?;
+    let (size, target) = build("sample-project")?;
 
     // Create a stamp file for --file.
-    let assert = sweep(dbg!(&["--stamp", "-v"])).assert().success();
-    println!("{}", std::str::from_utf8(&assert.get_output().stdout).unwrap());
-    assert!(project_dir().join("sweep.timestamp").exists());
+    let assert = run(sweep(dbg!(&["--stamp", "-v"])));
+    println!(
+        "{}",
+        std::str::from_utf8(&assert.get_output().stdout).unwrap()
+    );
+    assert!(project_dir("sample-project")
+        .join("sweep.timestamp")
+        .exists());
 
     let args = &["--file"];
     let expected_cleaned = count_cleaned_dry_run(&target, args, size)?;
@@ -153,10 +166,35 @@ fn stamp_file() -> Result<(), AnyhowWithContext> {
 
     // For some reason, we delete the stamp file after `--file` :(
     // Recreate it.
-    sweep(dbg!(&["--stamp"])).assert().success();
+    run(sweep(&["--stamp"]));
 
     let actual_cleaned = count_cleaned(&target, args, size)?;
     assert_eq!(actual_cleaned, expected_cleaned);
+
+    Ok(())
+}
+
+#[test]
+fn hidden() -> Result<(), AnyhowWithContext> {
+    // This path is so strange because we use CARGO_TARGET_DIR to set the target to a temporary directory.
+    // So we can't let cargo-sweep discover any other projects, or it will think they share the same directory as this hidden project.
+    let (size, target) = build("fresh-prefix/.hidden/hidden-project")?;
+    let run = |args| {
+        run(sweep(args)
+            .current_dir(test_dir().join("fresh-prefix"))
+            .env("CARGO_TARGET_DIR", target.path()))
+    };
+
+    run(&["--maxsize", "0", "-r"]);
+    assert_eq!(get_size(target.path())?, size);
+
+    run(&["--maxsize", "0", "-r", "--hidden"]);
+    assert!(
+        get_size(target.path())? < size,
+        "old_size={}, new_size={}",
+        size,
+        get_size(target.path())?
+    );
 
     Ok(())
 }
