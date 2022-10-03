@@ -1,0 +1,70 @@
+# Mostly copied from https://github.com/rust-lang/docs.rs/blob/master/.github/workflows/ci.yml
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: restore build & cargo cache
+        uses: Swatinem/rust-cache@v1
+
+      - name: Clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --all-targets --locked -- -D warnings
+
+      - name: Test
+        run: cargo test
+      
+  test-cross:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: x86_64-pc-windows-gnu
+          override: true
+
+      - name: restore build & cargo cache
+        uses: Swatinem/rust-cache@v1
+
+      - name: Test cross-compile
+        uses: actions-rs/cargo@v1
+        env:
+          RUSTFLAGS: -Dwarnings
+        with:
+          command: check
+          args: --target x86_64-pc-windows-gnu --all-targets --locked
+
+    
+  # This fails often and also doesn't take long to run. Put it in a separate job.
+  fmt:
+    name: fmt
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@master
+      - id: install
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: rustfmt
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: -- --check
