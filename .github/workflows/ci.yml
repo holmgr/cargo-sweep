@@ -11,6 +11,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
+          components: clippy
           override: true
 
       - name: restore build & cargo cache
