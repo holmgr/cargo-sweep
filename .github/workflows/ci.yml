@@ -11,6 +11,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
+          profile: minimal
           components: clippy
           override: true
 
@@ -33,6 +34,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+          profile: minimal
           override: true
 
       - name: restore build & cargo cache
@@ -54,6 +56,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+          profile: minimal
           target: x86_64-pc-windows-gnu
           override: true
 
@@ -80,6 +83,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+          profile: minimal
           override: true
           components: rustfmt
 
