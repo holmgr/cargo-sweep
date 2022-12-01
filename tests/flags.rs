@@ -1,7 +1,6 @@
 use std::{
     borrow::BorrowMut,
     fmt::Debug,
-    fs::Permissions,
     path::{Path, PathBuf},
 };
 
@@ -12,7 +11,6 @@ use fs_extra::dir::get_size;
 use predicates::prelude::PredicateBooleanExt;
 use predicates::str::contains;
 use tempfile::{tempdir, TempDir};
-use which::which;
 
 struct AnyhowWithContext(anyhow::Error);
 impl Debug for AnyhowWithContext {
@@ -209,7 +207,9 @@ fn hidden() -> TestResult {
 #[cfg(unix)]
 /// Setup a PATH that has a rustc that always gives an error. Make sure we see the error output.
 fn error_output() -> TestResult {
+    use std::fs::Permissions;
     use std::{io::ErrorKind, os::unix::prelude::PermissionsExt};
+    use which::which;
 
     let cargo = which("cargo")?;
     match std::os::unix::fs::symlink(&cargo, test_dir().join("cargo")) {
