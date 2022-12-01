@@ -258,6 +258,22 @@ fn golden_reference(args: &[&str], file: &str) -> TestResult {
 }
 
 #[test]
+fn path() -> TestResult {
+    let (_, target) = build("sample-project")?;
+    let mut cmd = Command::new(cargo_bin("cargo-sweep"));
+
+    cmd.arg("sweep").arg("--installed").current_dir("/tmp");
+
+    // Pass `path` as an argument, instead of `current_dir` like it normally is.
+    let assert = run(cmd
+        .arg(project_dir("sample-project"))
+        .env("CARGO_TARGET_DIR", target.path()));
+    assert.stdout(contains("Cleaned"));
+
+    Ok(())
+}
+
+#[test]
 fn subcommand_usage() -> TestResult {
     golden_reference(&["sweep", "-h"], "tests/usage.txt")
 }
