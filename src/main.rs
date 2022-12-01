@@ -130,13 +130,7 @@ fn metadata(path: &Path) -> Result<Metadata, Error> {
         .exec()
 }
 
-fn main() {
-    if let Err(err) = run() {
-        error!("{err:?}");
-    }
-}
-
-fn run() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
     let matches = app_from_crate!()
         .subcommand(
             SubCommand::with_name("sweep")
