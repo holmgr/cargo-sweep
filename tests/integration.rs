@@ -155,7 +155,7 @@ fn stamp_file() -> TestResult {
     let (size, target) = build("sample-project")?;
 
     // Create a stamp file for --file.
-    let assert = run(sweep(dbg!(&["--stamp", "-v"])));
+    let assert = run(sweep(&["--stamp", "-v"]));
     println!(
         "{}",
         std::str::from_utf8(&assert.get_output().stdout).unwrap()
@@ -223,5 +223,15 @@ fn error_output() -> TestResult {
         .env("CARGO_TARGET_DIR", tempdir.path()));
     assert.stdout(contains("oh no an error"));
 
+    Ok(())
+}
+
+#[test]
+fn error_status() -> TestResult {
+    sweep(&["--installed"])
+        .current_dir("/tmp")
+        .assert()
+        .failure()
+        .stderr(contains("Cargo.toml` does not exist"));
     Ok(())
 }
