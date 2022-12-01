@@ -1,0 +1,14 @@
+cargo-sweep 0.6.2
+holmgr <viktor.holmgren@gmail.com>
+A tool for cleaning unused build files created by Cargo
+
+USAGE:
+    cargo-sweep [SUBCOMMAND]
+
+FLAGS:
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+
+SUBCOMMANDS:
+    help     Prints this message or the help of the given subcommand(s)
+    sweep    

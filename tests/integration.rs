@@ -9,8 +9,10 @@ use anyhow::{Context, Result};
 use assert_cmd::Command;
 use assert_cmd::{assert::Assert, cargo::cargo_bin};
 use fs_extra::dir::get_size;
-use predicates::prelude::PredicateBooleanExt;
-use predicates::str::contains;
+use predicates::{
+    prelude::PredicateBooleanExt,
+    str::{contains, is_empty},
+};
 #[allow(unused_imports)]
 use pretty_assertions::{assert_eq, assert_ne};
 use tempfile::{tempdir, TempDir};
@@ -239,19 +241,28 @@ fn error_status() -> TestResult {
     Ok(())
 }
 
-#[test]
-fn usage() -> TestResult {
-    let output = sweep(&["-h"]).output()?;
-    assert!(output.status.success());
-    assert!(output.stderr.is_empty());
-    let actual = std::str::from_utf8(&output.stdout)?;
+fn golden_reference(args: &[&str], file: &str) -> TestResult {
+    let mut cmd = Command::new(cargo_bin("cargo-sweep"));
+    let mut assert = run(cmd.args(args));
 
-    let path = "tests/usage.txt";
+    assert = assert.stderr(is_empty());
+    let actual = std::str::from_utf8(&assert.get_output().stdout)?;
+
     if std::env::var("BLESS").as_deref() == Ok("1") {
-        fs::write(path, actual)?;
+        fs::write(file, actual)?;
     } else {
-        let expected = fs::read_to_string(path).context("failed to read usage file")?;
+        let expected = fs::read_to_string(file).context("failed to read usage file")?;
         assert_eq!(actual, expected);
     }
     Ok(())
+}
+
+#[test]
+fn subcommand_usage() -> TestResult {
+    golden_reference(&["sweep", "-h"], "tests/usage.txt")
+}
+
+#[test]
+fn standalone_usage() -> TestResult {
+    golden_reference(&["-h"], "tests/standalone-usage.txt")
 }
