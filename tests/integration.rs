@@ -1,6 +1,7 @@
 use std::{
     borrow::BorrowMut,
     fmt::Debug,
+    fs,
     path::{Path, PathBuf},
 };
 
@@ -10,6 +11,8 @@ use assert_cmd::{assert::Assert, cargo::cargo_bin};
 use fs_extra::dir::get_size;
 use predicates::prelude::PredicateBooleanExt;
 use predicates::str::contains;
+#[allow(unused_imports)]
+use pretty_assertions::{assert_eq, assert_ne};
 use tempfile::{tempdir, TempDir};
 
 struct AnyhowWithContext(anyhow::Error);
@@ -233,5 +236,22 @@ fn error_status() -> TestResult {
         .assert()
         .failure()
         .stderr(contains("Cargo.toml` does not exist"));
+    Ok(())
+}
+
+#[test]
+fn usage() -> TestResult {
+    let output = sweep(&["-h"]).output()?;
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    let actual = std::str::from_utf8(&output.stdout)?;
+
+    let path = "tests/usage.txt";
+    if std::env::var("BLESS").as_deref() == Ok("1") {
+        fs::write(path, actual)?;
+    } else {
+        let expected = fs::read_to_string(path).context("failed to read usage file")?;
+        assert_eq!(actual, expected);
+    }
     Ok(())
 }

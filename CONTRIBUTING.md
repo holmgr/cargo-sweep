@@ -10,3 +10,8 @@ To get started:
 1. Make a PR.
 
 You may also want to set up the pre-push hook: `ln -s ../../ci/pre-push .git/hooks`
+
+If you change the `--help` output, you will need to update the `usage` test:
+```
+BLESS=1 cargo test usage
+```

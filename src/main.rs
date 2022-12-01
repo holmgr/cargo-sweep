@@ -137,11 +137,13 @@ fn main() -> anyhow::Result<()> {
                 .arg(
                     Arg::with_name("verbose")
                         .short("v")
+                        .long("verbose")
                         .help("Turn verbose information on"),
                 )
                 .arg(
                     Arg::with_name("recursive")
                         .short("r")
+                        .long("recursive")
                         .help("Apply on all projects below the given path"),
                 )
                 .arg(
