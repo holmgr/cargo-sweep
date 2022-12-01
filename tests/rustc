@@ -1,0 +1,4 @@
+#!/bin/sh
+# A fake rustc executable we can use to test what happens when the compiler returns an error.
+echo "oh no an error" >&2
+exit 1

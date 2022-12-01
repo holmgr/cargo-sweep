@@ -207,28 +207,18 @@ fn hidden() -> TestResult {
 #[cfg(unix)]
 /// Setup a PATH that has a rustc that always gives an error. Make sure we see the error output.
 fn error_output() -> TestResult {
-    use std::fs::Permissions;
-    use std::{io::ErrorKind, os::unix::prelude::PermissionsExt};
+    use std::io::ErrorKind;
     use which::which;
 
     let cargo = which("cargo")?;
-    match std::os::unix::fs::symlink(&cargo, test_dir().join("cargo")) {
+    match std::os::unix::fs::symlink(cargo, test_dir().join("cargo")) {
         Err(e) if e.kind() == ErrorKind::AlreadyExists => {}
         Err(e) => return Err(e.into()),
         Ok(_) => {}
     }
 
-    // lmao
-    const FAKE_RUSTC: &str = r#"#!/bin/sh
-        echo "oh no an error" >&2
-        exit 1
-    "#;
-    let rustc = test_dir().join("rustc");
-    std::fs::write(&rustc, FAKE_RUSTC)?;
-    std::fs::set_permissions(&rustc, Permissions::from_mode(0o700))?;
-
-    build("sample-project")?;
-    let assert = run(sweep(&["--installed"]).env("PATH", test_dir()));
+    let (_, tempdir) = build("sample-project")?;
+    let assert = run(sweep(&["--installed"]).env("PATH", test_dir()).env("CARGO_TARGET_DIR", tempdir.path()));
     assert.stdout(contains("oh no an error"));
 
     Ok(())
