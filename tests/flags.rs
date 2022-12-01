@@ -218,7 +218,9 @@ fn error_output() -> TestResult {
     }
 
     let (_, tempdir) = build("sample-project")?;
-    let assert = run(sweep(&["--installed"]).env("PATH", test_dir()).env("CARGO_TARGET_DIR", tempdir.path()));
+    let assert = run(sweep(&["--installed"])
+        .env("PATH", test_dir())
+        .env("CARGO_TARGET_DIR", tempdir.path()));
     assert.stdout(contains("oh no an error"));
 
     Ok(())
