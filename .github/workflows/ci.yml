@@ -8,12 +8,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@nightly
         with:
-          toolchain: nightly
-          profile: minimal
           components: clippy
-          override: true
 
       - name: restore build & cargo cache
         uses: Swatinem/rust-cache@v1
@@ -31,11 +28,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@master
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
+      - uses: dtolnay/rust-toolchain@stable
 
       - name: restore build & cargo cache
         uses: Swatinem/rust-cache@v1
@@ -53,12 +46,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          profile: minimal
-          target: x86_64-pc-windows-gnu
-          override: true
+          targets: x86_64-pc-windows-gnu
 
       - name: restore build & cargo cache
         uses: Swatinem/rust-cache@v1
@@ -79,12 +69,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@master
-      - id: install
-        uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          profile: minimal
-          override: true
           components: rustfmt
 
       - uses: actions-rs/cargo@v1
