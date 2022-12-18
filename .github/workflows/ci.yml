@@ -25,10 +25,22 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os: windows-latest
+            target: i686-pc-windows-msvc
+          - os: windows-latest
+            target: x86_64-pc-windows-gnu
+          - os: windows-latest
+            target: i686-pc-windows-gnu
+
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@master
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          target: ${{ matrix.target }}
 
       - name: restore build & cargo cache
         uses: Swatinem/rust-cache@v1
@@ -41,7 +53,7 @@ jobs:
 
       - name: Test
         run: cargo test
-      
+
   test-cross:
     runs-on: ubuntu-latest
     steps:
@@ -61,7 +73,6 @@ jobs:
           command: check
           args: --target x86_64-pc-windows-gnu --all-targets --locked
 
-    
   # This fails often and also doesn't take long to run. Put it in a separate job.
   fmt:
     name: fmt
