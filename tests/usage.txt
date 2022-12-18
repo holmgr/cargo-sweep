@@ -1,7 +1,7 @@
-cargo-sweep-sweep 
+cargo-sweep.exe-sweep 
 
 USAGE:
-    cargo-sweep sweep [FLAGS] [OPTIONS] <--stamp|--file|--time <days>|--installed|--toolchains <toolchains>|--maxsize <maxsize>> [path]
+    cargo-sweep.exe sweep [FLAGS] [OPTIONS] <--stamp|--file|--time <days>|--installed|--toolchains <toolchains>|--maxsize <maxsize>> [path]
 
 FLAGS:
     -d, --dry-run      Dry run which will not delete any files

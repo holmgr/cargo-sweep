@@ -3,7 +3,7 @@ holmgr <viktor.holmgren@gmail.com>
 A tool for cleaning unused build files created by Cargo
 
 USAGE:
-    cargo-sweep [SUBCOMMAND]
+    cargo-sweep.exe [SUBCOMMAND]
 
 FLAGS:
     -h, --help       Prints help information
