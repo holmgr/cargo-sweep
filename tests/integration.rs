@@ -242,11 +242,7 @@ fn error_status() -> TestResult {
     Ok(())
 }
 
-fn golden_reference(
-    args: &[&str],
-    file: &str,
-    content_modifier: fn(content: &mut String),
-) -> TestResult {
+fn golden_reference(args: &[&str], file: &str) -> TestResult {
     let mut cmd = Command::new(cargo_bin("cargo-sweep"));
     let mut assert = run(cmd.args(args));
 
@@ -257,7 +253,7 @@ fn golden_reference(
         fs::write(file, actual)?;
     } else {
         let mut expected = fs::read_to_string(file).context("failed to read usage file")?;
-        content_modifier(&mut expected);
+        content_normalize(&mut expected);
         assert_eq!(actual, expected);
     }
     Ok(())
@@ -288,10 +284,10 @@ fn content_normalize(content: &mut String) {
 
 #[test]
 fn subcommand_usage() -> TestResult {
-    golden_reference(&["sweep", "-h"], "tests/usage.txt", content_normalize)
+    golden_reference(&["sweep", "-h"], "tests/usage.txt")
 }
 
 #[test]
 fn standalone_usage() -> TestResult {
-    golden_reference(&["-h"], "tests/standalone-usage.txt", content_normalize)
+    golden_reference(&["-h"], "tests/standalone-usage.txt")
 }
