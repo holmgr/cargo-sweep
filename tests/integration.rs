@@ -1,5 +1,6 @@
 use std::{
     borrow::BorrowMut,
+    env::temp_dir,
     fmt::Debug,
     fs,
     path::{Path, PathBuf},
@@ -234,7 +235,7 @@ fn error_output() -> TestResult {
 #[test]
 fn error_status() -> TestResult {
     sweep(&["--installed"])
-        .current_dir("/tmp")
+        .current_dir(temp_dir())
         .assert()
         .failure()
         .stderr(contains("Cargo.toml` does not exist"));
@@ -267,7 +268,7 @@ fn path() -> TestResult {
     let (_, target) = build("sample-project")?;
     let mut cmd = Command::new(cargo_bin("cargo-sweep"));
 
-    cmd.arg("sweep").arg("--installed").current_dir("/tmp");
+    cmd.arg("sweep").arg("--installed").current_dir(temp_dir());
 
     // Pass `path` as an argument, instead of `current_dir` like it normally is.
     let assert = run(cmd
