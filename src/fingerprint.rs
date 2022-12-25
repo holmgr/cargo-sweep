@@ -215,21 +215,21 @@ fn remove_not_matching_in_a_dir(
                     total_disk_space += metadata.len();
                     if !dry_run {
                         match remove_file(&path) {
-                            Ok(_) => info!("Successfully removed: {:?}", &path),
+                            Ok(_) => debug!("Successfully removed: {:?}", &path),
                             Err(e) => warn!("Failed to remove: {:?} {}", &path, e),
                         };
                     } else {
-                        info!("Would remove: {:?}", &path);
+                        debug!("Would remove: {:?}", &path);
                     }
                 } else if path.is_dir() {
                     total_disk_space += total_disk_space_dir(&path);
                     if !dry_run {
                         match remove_dir_all(&path) {
-                            Ok(_) => info!("Successfully removed: {:?}", &path),
+                            Ok(_) => debug!("Successfully removed: {:?}", &path),
                             Err(e) => warn!("Failed to remove: {:?} {}", &path, e),
                         };
                     } else {
-                        info!("Would remove: {:?}", &path);
+                        debug!("Would remove: {:?}", &path);
                     }
                 }
             }

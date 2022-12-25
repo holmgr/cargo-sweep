@@ -49,6 +49,7 @@ fn sweep(args: &[&str]) -> Command {
     let mut cmd = Command::new(cargo_bin("cargo-sweep"));
     cmd.arg("sweep")
         .current_dir(project_dir("sample-project"))
+        .arg("--verbose")
         .args(args);
     cmd
 }
@@ -158,7 +159,7 @@ fn stamp_file() -> TestResult {
     let (size, target) = build("sample-project")?;
 
     // Create a stamp file for --file.
-    let assert = run(sweep(&["--stamp", "-v"]));
+    let assert = run(sweep(&["--stamp"]));
     println!(
         "{}",
         std::str::from_utf8(&assert.get_output().stdout).unwrap()
