@@ -15,11 +15,11 @@ jobs:
       - name: restore build & cargo cache
         uses: Swatinem/rust-cache@v1
 
-      - name: Clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-targets --locked -- -D warnings
+      - name: show warnings as check annotations on the PR
+        # rust.json is copied from https://github.com/hecrj/setup-rust-action/blob/master/.github/rust.json
+        run: echo "##[add-matcher].github/rust.json"
+
+      - run: cargo clippy --all-targets --all-features --color never
 
   test:
     strategy:
@@ -45,6 +45,9 @@ jobs:
       - name: restore build & cargo cache
         uses: Swatinem/rust-cache@v1
 
+      - name: show warnings as check annotations on the PR
+        run: echo "##[add-matcher].github/rust.json"
+
       - name: Clippy
         uses: actions-rs/cargo@v1
         with:
@@ -65,6 +68,9 @@ jobs:
       - name: restore build & cargo cache
         uses: Swatinem/rust-cache@v1
 
+      - name: show warnings as check annotations on the PR
+        run: echo "##[add-matcher].github/rust.json"
+
       - name: Test cross-compile
         uses: actions-rs/cargo@v1
         env:
@@ -84,6 +90,9 @@ jobs:
         with:
           toolchain: stable
           components: rustfmt
+
+      - name: show warnings as check annotations on the PR
+        run: echo "##[add-matcher].github/rust.json"
 
       - uses: actions-rs/cargo@v1
         with:
