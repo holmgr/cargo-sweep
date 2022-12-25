@@ -123,7 +123,7 @@ fn count_cleaned(target: &TempDir, args: &[&str], old_size: u64) -> Result<u64> 
     let one_percent = old_size as f64 * 0.01;
     assert!(
         diff <= one_percent as u64,
-        "new_size={new_size}, old_size={old_size}, cleaned={cleaned}, diff={diff}, 1%={one_percent}"
+        "new_size={new_size}, old_size={old_size}, cleaned={cleaned}, diff={diff}, 1%={one_percent}",
     );
 
     Ok(cleaned)
