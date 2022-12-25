@@ -88,13 +88,21 @@ fn clean_and_parse(target: &TempDir, args: &[&str]) -> Result<u64> {
 
     let output = assertion.get_output();
     assert!(output.stderr.is_empty());
+
+    // Extract the size from the last line of stdout, example:
+    // - stdout: "[INFO] Would clean: 9.43 KiB from "/home/user/project/target"
+    // - extracted amount: "9.43 KiB "
     let amount = std::str::from_utf8(&output.stdout)?
         .lines()
         .last()
         .unwrap()
         .split(clean_msg)
         .nth(1)
-        .unwrap();
+        .unwrap()
+        .split_inclusive(' ')
+        .take(2)
+        .collect::<String>();
+
     let cleaned = amount
         .parse::<human_size::Size>()
         .context(format!("failed to parse amount {amount}"))?

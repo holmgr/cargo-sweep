@@ -251,9 +251,15 @@ fn main() -> anyhow::Result<()> {
             for project_path in &paths {
                 match remove_not_built_with(project_path, matches.value_of("toolchains"), dry_run) {
                     Ok(cleaned_amount) if dry_run => {
-                        info!("Would clean: {}", format_bytes(cleaned_amount))
+                        info!(
+                            "Would clean: {} from {project_path:?}",
+                            format_bytes(cleaned_amount)
+                        )
                     }
-                    Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
+                    Ok(cleaned_amount) => info!(
+                        "Cleaned {} from {project_path:?}",
+                        format_bytes(cleaned_amount)
+                    ),
                     Err(e) => error!(
                         "{:?}",
                         e.context(format!("Failed to clean {project_path:?}"))
@@ -275,9 +281,15 @@ fn main() -> anyhow::Result<()> {
             for project_path in &paths {
                 match remove_older_until_fits(project_path, size, dry_run) {
                     Ok(cleaned_amount) if dry_run => {
-                        info!("Would clean: {}", format_bytes(cleaned_amount))
+                        info!(
+                            "Would clean: {} from {project_path:?}",
+                            format_bytes(cleaned_amount)
+                        )
                     }
-                    Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
+                    Ok(cleaned_amount) => info!(
+                        "Cleaned {} from {project_path:?}",
+                        format_bytes(cleaned_amount)
+                    ),
                     Err(e) => error!("Failed to clean {:?}: {:?}", project_path, e),
                 };
             }
@@ -297,9 +309,15 @@ fn main() -> anyhow::Result<()> {
             for project_path in &paths {
                 match remove_older_than(project_path, &keep_duration, dry_run) {
                     Ok(cleaned_amount) if dry_run => {
-                        info!("Would clean: {}", format_bytes(cleaned_amount))
+                        info!(
+                            "Would clean: {} from {project_path:?}",
+                            format_bytes(cleaned_amount)
+                        )
                     }
-                    Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
+                    Ok(cleaned_amount) => info!(
+                        "Cleaned {} from {project_path:?}",
+                        format_bytes(cleaned_amount)
+                    ),
                     Err(e) => error!("Failed to clean {:?}: {:?}", project_path, e),
                 };
             }
