@@ -1,0 +1,22 @@
+on:
+  pull_request:
+    branches:
+      - master
+    types: [opened, reopened, ready_for_review, review_requested]
+  issue_comment:
+    types: [created]
+
+
+jobs:
+  mark-waiting-on-review:
+    runs-on: ubuntu-latest
+    # 'created' is only for issue commments.
+    # issue_comment fires for both issues and pull requests
+    if: ${{ github.event.issue.pull_request.state != 'draft' && (github.event.action != 'created' || github.event.issue.pull_request && github.event.issue.user.login == github.event.sender.login) }}
+    steps:
+      - uses: actions-ecosystem/action-add-labels@v1
+        with:
+          labels: S-waiting-on-review
+      - uses: actions-ecosystem/action-remove-labels@v1
+        with:
+          labels: S-waiting-on-author
