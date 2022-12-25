@@ -4,11 +4,11 @@ pub fn format_bytes(bytes: u64) -> String {
     let mut bytes = bytes as f64;
     for prefix in prefixes.iter() {
         if bytes < 1024. {
-            return format!("{:.2} {}", bytes, prefix);
+            return format!("{bytes:.2} {prefix}");
         }
         bytes /= 1024.;
     }
-    format!("{} TiB", bytes)
+    format!("{bytes} TiB")
 }
 
 #[cfg(test)]
