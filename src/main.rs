@@ -256,7 +256,7 @@ fn main() -> anyhow::Result<()> {
                     Ok(cleaned_amount) => info!("Cleaned {}", format_bytes(cleaned_amount)),
                     Err(e) => error!(
                         "{:?}",
-                        e.context(format!("Failed to clean {:?}", project_path))
+                        e.context(format!("Failed to clean {project_path:?}"))
                     ),
                 };
             }
