@@ -54,7 +54,11 @@ fn sweep(args: &[&str]) -> Command {
     cmd
 }
 
-fn run(mut cmd: impl BorrowMut<Command>) -> Assert {
+/// Sets the target folder and runs the given command
+fn run<'a>(mut cmd: impl BorrowMut<Command>, target: impl Into<Option<&'a Path>>) -> Assert {
+    if let Some(target) = target.into() {
+        cmd.borrow_mut().env("CARGO_TARGET_DIR", target);
+    }
     let assert = cmd.borrow_mut().assert().success();
     let out = assert.get_output();
     let str = |s| std::str::from_utf8(s).unwrap();
@@ -67,9 +71,7 @@ fn run(mut cmd: impl BorrowMut<Command>) -> Assert {
 fn build(project: &str) -> Result<(u64, TempDir)> {
     let target = tempdir()?;
     let old_size = get_size(target.path())?;
-    run(cargo(project)
-        .arg("build")
-        .env("CARGO_TARGET_DIR", target.path()));
+    run(cargo(project).arg("build"), target.path());
     let new_size = get_size(target.path())?;
     assert!(new_size > old_size, "cargo didn't build anything");
     Ok((new_size, target))
@@ -83,8 +85,8 @@ fn clean_and_parse(target: &TempDir, args: &[&str]) -> Result<u64> {
     } else {
         ("Successfully removed", "Cleaned ")
     };
-    let assertion = run(sweep(args).env("CARGO_TARGET_DIR", target.path()))
-        .stdout(contains(remove_msg).and(contains(clean_msg)));
+    let assertion =
+        run(sweep(args), target.path()).stdout(contains(remove_msg).and(contains(clean_msg)));
 
     let output = assertion.get_output();
     assert!(output.stderr.is_empty());
@@ -167,7 +169,7 @@ fn stamp_file() -> TestResult {
     let (size, target) = build("sample-project")?;
 
     // Create a stamp file for --file.
-    let assert = run(sweep(&["--stamp"]));
+    let assert = run(sweep(&["--stamp"]), target.path());
     println!(
         "{}",
         std::str::from_utf8(&assert.get_output().stdout).unwrap()
@@ -182,7 +184,7 @@ fn stamp_file() -> TestResult {
 
     // For some reason, we delete the stamp file after `--file` :(
     // Recreate it.
-    run(sweep(&["--stamp"]));
+    run(sweep(&["--stamp"]), target.path());
 
     let actual_cleaned = count_cleaned(&target, args, size)?;
     assert_eq!(actual_cleaned, expected_cleaned);
@@ -196,9 +198,10 @@ fn hidden() -> TestResult {
     // So we can't let cargo-sweep discover any other projects, or it will think they share the same directory as this hidden project.
     let (size, target) = build("fresh-prefix/.hidden/hidden-project")?;
     let run = |args| {
-        run(sweep(args)
-            .current_dir(test_dir().join("fresh-prefix"))
-            .env("CARGO_TARGET_DIR", target.path()))
+        run(
+            sweep(args).current_dir(test_dir().join("fresh-prefix")),
+            target.path(),
+        )
     };
 
     run(&["--maxsize", "0", "-r"]);
@@ -230,9 +233,10 @@ fn error_output() -> TestResult {
     }
 
     let (_, tempdir) = build("sample-project")?;
-    let assert = run(sweep(&["--installed"])
-        .env("PATH", test_dir())
-        .env("CARGO_TARGET_DIR", tempdir.path()));
+    let assert = run(
+        sweep(&["--installed"]).env("PATH", test_dir()),
+        tempdir.path(),
+    );
     assert.stdout(contains("oh no an error"));
 
     Ok(())
@@ -250,7 +254,7 @@ fn error_status() -> TestResult {
 
 fn golden_reference(args: &[&str], file: &str) -> TestResult {
     let mut cmd = Command::new(cargo_bin("cargo-sweep"));
-    let mut assert = run(cmd.args(args));
+    let mut assert = run(cmd.args(args), None);
 
     assert = assert.stderr(is_empty());
     let actual = std::str::from_utf8(&assert.get_output().stdout)?;
@@ -273,9 +277,7 @@ fn path() -> TestResult {
     cmd.arg("sweep").arg("--installed").current_dir(temp_dir());
 
     // Pass `path` as an argument, instead of `current_dir` like it normally is.
-    let assert = run(cmd
-        .arg(project_dir("sample-project"))
-        .env("CARGO_TARGET_DIR", target.path()));
+    let assert = run(cmd.arg(project_dir("sample-project")), target.path());
     assert.stdout(contains("Cleaned"));
 
     Ok(())
