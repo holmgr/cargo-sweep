@@ -210,25 +210,23 @@ fn empty_project_output() -> TestResult {
 
     let output = std::str::from_utf8(&assert.get_output().stdout).unwrap();
 
-    let regex_skip = r#".+?"#;
-
-    let pattern = unindent(&format!(
-        r#"\[DEBUG\] cleaning: "/tmp/{regex_skip}" with remove_older_until_fits
-        \[DEBUG\] size_to_remove: {regex_skip}
-        \[DEBUG\] Sizing: "/tmp/{regex_skip}/debug" with total_disk_space_in_a_profile
+    let pattern = unindent(
+        r#"\[DEBUG\] cleaning: ".+" with remove_older_until_fits
+        \[DEBUG\] size_to_remove: .+
+        \[DEBUG\] Sizing: ".+/debug" with total_disk_space_in_a_profile
         \[DEBUG\] Hashs by time: \[
             \(
-                {regex_skip},
-                "{regex_skip}",
+                .+,
+                ".+",
             \),
         \]
-        \[DEBUG\] cleaning: "/tmp/{regex_skip}/debug" with remove_not_built_with_in_a_profile
-        \[DEBUG\] Successfully removed: "/tmp/{regex_skip}/debug/deps/libsample_project-{regex_skip}.rlib"
-        \[DEBUG\] Successfully removed: "/tmp/{regex_skip}/debug/deps/libsample_project-{regex_skip}.rmeta"
-        \[DEBUG\] Successfully removed: "/tmp/{regex_skip}/debug/deps/sample_project-{regex_skip}.d"
-        \[DEBUG\] Successfully removed: "/tmp/{regex_skip}/debug/.fingerprint/sample-project-{regex_skip}"
-        \[INFO\] Cleaned {regex_skip} from "/tmp/{regex_skip}""#,
-    ));
+        \[DEBUG\] cleaning: ".+/debug" with remove_not_built_with_in_a_profile
+        \[DEBUG\] Successfully removed: ".+/debug/deps/libsample_project-.+\.rlib"
+        \[DEBUG\] Successfully removed: ".+/debug/deps/libsample_project-.+\.rmeta"
+        \[DEBUG\] Successfully removed: ".+/debug/deps/sample_project-.+\.d"
+        \[DEBUG\] Successfully removed: ".+/debug/.fingerprint/sample-project-.+"
+        \[INFO\] Cleaned .+ from ".+""#,
+    );
 
     assert!(
         regex_matches(&pattern, output),
