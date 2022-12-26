@@ -213,18 +213,18 @@ fn empty_project_output() -> TestResult {
     let pattern = unindent(
         r#"\[DEBUG\] cleaning: ".+" with remove_older_until_fits
         \[DEBUG\] size_to_remove: .+
-        \[DEBUG\] Sizing: ".+/debug" with total_disk_space_in_a_profile
+        \[DEBUG\] Sizing: ".+debug" with total_disk_space_in_a_profile
         \[DEBUG\] Hashs by time: \[
             \(
                 .+,
                 ".+",
             \),
         \]
-        \[DEBUG\] cleaning: ".+/debug" with remove_not_built_with_in_a_profile
-        \[DEBUG\] Successfully removed: ".+/debug/deps/libsample_project-.+\.rlib"
-        \[DEBUG\] Successfully removed: ".+/debug/deps/libsample_project-.+\.rmeta"
-        \[DEBUG\] Successfully removed: ".+/debug/deps/sample_project-.+\.d"
-        \[DEBUG\] Successfully removed: ".+/debug/.fingerprint/sample-project-.+"
+        \[DEBUG\] cleaning: ".+debug" with remove_not_built_with_in_a_profile
+        \[DEBUG\] Successfully removed: ".+libsample_project-.+\.rlib"
+        \[DEBUG\] Successfully removed: ".+libsample_project-.+\.rmeta"
+        \[DEBUG\] Successfully removed: ".+sample_project-.+\.d"
+        \[DEBUG\] Successfully removed: ".+.fingerprint.+sample-project-.+"
         \[INFO\] Cleaned .+ from ".+""#,
     );
 
