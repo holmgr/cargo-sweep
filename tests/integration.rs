@@ -16,7 +16,9 @@ use predicates::{
 };
 #[allow(unused_imports)]
 use pretty_assertions::{assert_eq, assert_ne};
+use regex::Regex;
 use tempfile::{tempdir, TempDir};
+use unindent::unindent;
 
 struct AnyhowWithContext(anyhow::Error);
 impl Debug for AnyhowWithContext {
@@ -142,6 +144,11 @@ fn count_cleaned_dry_run(target: &TempDir, args: &[&str], old_size: u64) -> Resu
     Ok(cleaned)
 }
 
+fn regex_matches(pattern: &str, text: &str) -> bool {
+    let pattern = Regex::new(pattern).expect("Failed to compile regex pattern");
+    pattern.is_match(text)
+}
+
 #[test]
 fn all_flags() -> TestResult {
     let all_combos = [
@@ -188,6 +195,45 @@ fn stamp_file() -> TestResult {
 
     let actual_cleaned = count_cleaned(&target, args, size)?;
     assert_eq!(actual_cleaned, expected_cleaned);
+
+    Ok(())
+}
+
+#[test]
+fn empty_project_output() -> TestResult {
+    let (_size, target) = build("sample-project")?;
+
+    let assert = run(
+        sweep(&["--maxsize", "0"]).current_dir(test_dir().join("sample-project")),
+        target.path(),
+    );
+
+    let output = std::str::from_utf8(&assert.get_output().stdout).unwrap();
+
+    let regex_skip = r#".+?"#;
+
+    let pattern = unindent(&format!(
+        r#"\[DEBUG\] cleaning: "/tmp/{regex_skip}" with remove_older_until_fits
+        \[DEBUG\] size_to_remove: {regex_skip}
+        \[DEBUG\] Sizing: "/tmp/{regex_skip}/debug" with total_disk_space_in_a_profile
+        \[DEBUG\] Hashs by time: \[
+            \(
+                {regex_skip},
+                "{regex_skip}",
+            \),
+        \]
+        \[DEBUG\] cleaning: "/tmp/{regex_skip}/debug" with remove_not_built_with_in_a_profile
+        \[DEBUG\] Successfully removed: "/tmp/{regex_skip}/debug/deps/libsample_project-{regex_skip}.rlib"
+        \[DEBUG\] Successfully removed: "/tmp/{regex_skip}/debug/deps/libsample_project-{regex_skip}.rmeta"
+        \[DEBUG\] Successfully removed: "/tmp/{regex_skip}/debug/deps/sample_project-{regex_skip}.d"
+        \[DEBUG\] Successfully removed: "/tmp/{regex_skip}/debug/.fingerprint/sample-project-{regex_skip}"
+        \[INFO\] Cleaned {regex_skip} from "/tmp/{regex_skip}""#,
+    ));
+
+    assert!(
+        regex_matches(&pattern, output),
+        "failed to match pattern with output"
+    );
 
     Ok(())
 }
