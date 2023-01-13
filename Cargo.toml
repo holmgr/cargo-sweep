@@ -10,7 +10,7 @@ repository = "https://github.com/holmgr/cargo-sweep"
 readme = "README.md"
 
 [dependencies]
-clap = "2.32.0"
+clap = { version = "4.0.32", features = ["derive"] }
 crossterm = "0.25.0"
 walkdir = "2"
 anyhow = "1.0.43"

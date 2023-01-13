@@ -392,17 +392,17 @@ fn rustup_toolchain_list() -> Option<Vec<String>> {
 
 pub fn remove_not_built_with(
     dir: &Path,
-    rust_version_to_keep: Option<&str>,
+    rust_version_to_keep: &[String],
     dry_run: bool,
 ) -> Result<u64, Error> {
     debug!("cleaning: {:?} with remove_not_built_with", dir);
     let mut total_disk_space = 0;
-    let hashed_rust_version_to_keep = if let Some(names) = rust_version_to_keep {
+    let hashed_rust_version_to_keep = if !rust_version_to_keep.is_empty() {
         info!(
             "Using specified installed toolchains: {:?}",
-            names.split(',').collect::<Vec<_>>()
+            rust_version_to_keep
         );
-        lookup_from_names(names.split(',').map(Some))?
+        lookup_from_names(rust_version_to_keep.iter().map(Some))?
     } else {
         match rustup_toolchain_list() {
             Some(list) => {
