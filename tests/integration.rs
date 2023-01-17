@@ -221,9 +221,9 @@ fn empty_project_output() -> TestResult {
             \),
         \]
         \[DEBUG\] cleaning: ".+debug" with remove_not_built_with_in_a_profile
-        \[DEBUG\] Successfully removed: ".+libsample_project-.+\.rlib"
-        \[DEBUG\] Successfully removed: ".+libsample_project-.+\.rmeta"
-        \[DEBUG\] Successfully removed: ".+sample_project-.+\.d"
+        \[DEBUG\] Successfully removed: ".+debug.+deps.+sample_project.+"
+        \[DEBUG\] Successfully removed: ".+debug.+deps.+sample_project.+"
+        \[DEBUG\] Successfully removed: ".+debug.+deps.+sample_project.+"
         \[DEBUG\] Successfully removed: ".+.fingerprint.+sample-project-.+"
         \[INFO\] Cleaned .+ from ".+""#,
     );
