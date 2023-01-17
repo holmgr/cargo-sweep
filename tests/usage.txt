@@ -1,3 +1,5 @@
+A tool for cleaning unused build files created by Cargo
+
 Usage: cargo-sweep sweep [OPTIONS] <--stamp|--file|--time <TIME>|--installed|--toolchains <TOOLCHAINS>|--maxsize <MAXSIZE_MB>> [PATH]
 
 Arguments:
@@ -15,3 +17,4 @@ Options:
       --toolchains <TOOLCHAINS>  Toolchains (currently installed by rustup) that should have their artifacts kept
   -v, --verbose                  Turn verbose information on
   -h, --help                     Print help information
+  -V, --version                  Print version information

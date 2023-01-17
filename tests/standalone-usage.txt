@@ -3,7 +3,7 @@ A tool for cleaning unused build files created by Cargo
 Usage: cargo-sweep <COMMAND>
 
 Commands:
-  sweep  
+  sweep  A tool for cleaning unused build files created by Cargo
   help   Print this message or the help of the given subcommand(s)
 
 Options:

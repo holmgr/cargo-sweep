@@ -26,11 +26,15 @@ pub enum SweepCommand {
 
 #[derive(Parser, Debug)]
 #[cfg_attr(test, derive(Default, PartialEq))]
-#[command(group(
-    ArgGroup::new("criterion")
-        .required(true)
-        .args(["stamp", "file", "time", "installed", "toolchains", "maxsize"])
-))]
+#[command(
+    about,
+    version,
+    group(
+        ArgGroup::new("criterion")
+            .required(true)
+            .args(["stamp", "file", "time", "installed", "toolchains", "maxsize"])
+    )
+)]
 pub struct Args {
     /// Path to check
     pub path: Option<PathBuf>,
