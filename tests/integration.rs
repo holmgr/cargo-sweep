@@ -234,6 +234,8 @@ fn empty_project_output() -> TestResult {
 
     let output = std::str::from_utf8(&assert.get_output().stdout).unwrap();
 
+    // Please note: The output from the sweep command is platform dependent. The regular
+    // expression tries to take that into account by letting the file output order vary.
     let pattern = unindent(
         r#"\[DEBUG\] cleaning: ".+" with remove_older_until_fits
         \[DEBUG\] size_to_remove: .+
@@ -248,7 +250,7 @@ fn empty_project_output() -> TestResult {
         \[DEBUG\] Successfully removed: ".+debug.+deps.+sample_project.+"
         \[DEBUG\] Successfully removed: ".+debug.+deps.+sample_project.+"
         \[DEBUG\] Successfully removed: ".+debug.+deps.+sample_project.+"
-        \[DEBUG\] Successfully removed: ".+.fingerprint.+sample-project-.+"
+        \[DEBUG\] Successfully removed: ".+debug.+fingerprint.+sample-project.+"
         \[INFO\] Cleaned .+ from ".+""#,
     );
 
