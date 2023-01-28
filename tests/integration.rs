@@ -372,6 +372,7 @@ fn recursive_multiple_root_workspaces() -> TestResult {
 
     // Build bin-crate
     run(Command::new(env!("CARGO"))
+        // Don't output incremental build artifacts
         .env("CARGO_INCREMENTAL", "0")
         .arg("build")
         .current_dir(target.path().join("nested-root-workspace/bin-crate")));
@@ -381,6 +382,7 @@ fn recursive_multiple_root_workspaces() -> TestResult {
 
     // Build workspace crates
     run(Command::new(env!("CARGO"))
+        // Don't output incremental build artifacts
         .env("CARGO_INCREMENTAL", "0")
         .arg("build")
         .current_dir(target.path().join("nested-root-workspace")));
