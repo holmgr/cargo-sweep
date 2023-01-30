@@ -60,6 +60,9 @@ pub struct Args {
     installed: bool,
 
     /// Remove oldest artifacts until the target directory is below the specified size in MB
+    ///
+    /// TODO: consider parsing units like GB, KB
+    /// https://github.com/holmgr/cargo-sweep/issues/82
     #[arg(short, long, value_name = "MAXSIZE_MB")]
     maxsize: Option<u64>,
 
