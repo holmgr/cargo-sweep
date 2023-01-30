@@ -78,7 +78,7 @@ pub struct Args {
     #[arg(short, long)]
     time: Option<u64>,
 
-    /// Toolchains (currently installed by rustup) that should have their artifacts kept
+    /// Toolchains currently installed by rustup that should have their artifacts kept
     #[arg(long, value_delimiter = ',')]
     toolchains: Vec<String>,
 

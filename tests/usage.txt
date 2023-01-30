@@ -14,7 +14,7 @@ Options:
   -r, --recursive                Apply on all projects below the given path
   -s, --stamp                    Store timestamp file at the given path, is used by file option
   -t, --time <TIME>              Number of days backwards to keep
-      --toolchains <TOOLCHAINS>  Toolchains (currently installed by rustup) that should have their artifacts kept
+      --toolchains <TOOLCHAINS>  Toolchains currently installed by rustup that should have their artifacts kept
   -v, --verbose                  Turn verbose information on
-  -h, --help                     Print help information
+  -h, --help                     Print help information (use `--help` for more detail)
   -V, --version                  Print version information
