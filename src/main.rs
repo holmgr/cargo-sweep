@@ -163,13 +163,12 @@ fn main() -> anyhow::Result<()> {
         }
     };
 
-    if matches!(criterion, Criterion::Installed | Criterion::Toolchains(_)) {
-        let toolchains = match criterion {
-            Criterion::Installed => vec![],
-            Criterion::Toolchains(vec) => vec,
-            _ => todo!(),
-        };
-
+    let toolchains = match &criterion {
+        Criterion::Installed => Some(vec![]),
+        Criterion::Toolchains(vec) => Some(vec).cloned(),
+        _ => None,
+    };
+    if let Some(toolchains) = toolchains {
         for project_path in &paths {
             match remove_not_built_with(project_path, &toolchains, dry_run) {
                 Ok(cleaned_amount) if dry_run => {
