@@ -357,6 +357,11 @@ fn usage() -> TestResult {
 /// * Do a dry run sweep, asserting that nothing was actually cleaned.
 /// * Do a proper sweep, asserting that the target directory size is back down to its
 ///   expected size.
+///
+/// Please note that there is some ceremony involved, namely correctly setting:
+/// * `CARGO_TARGET_DIR` to `unset`, so as not to clash with users who use `CARGO_TARGET_DIR`
+///   when they invoke `cargo test` for running these tests.
+/// * `CARGO_INCREMENTAL` to `0`, because cargo-sweep doesn't yet clear incremental files.
 #[test]
 fn recursive_multiple_root_workspaces() -> TestResult {
     let target = tempdir()?;
@@ -372,6 +377,9 @@ fn recursive_multiple_root_workspaces() -> TestResult {
 
     // Build bin-crate
     run(Command::new(env!("CARGO"))
+        // If someone has built & run these tests with CARGO_TARGET_DIR,
+        // we need to override that.
+        .env_remove("CARGO_TARGET_DIR")
         // Don't output incremental build artifacts
         .env("CARGO_INCREMENTAL", "0")
         .arg("build")
@@ -382,6 +390,9 @@ fn recursive_multiple_root_workspaces() -> TestResult {
 
     // Build workspace crates
     run(Command::new(env!("CARGO"))
+        // If someone has built & run these tests with CARGO_TARGET_DIR,
+        // we need to override that.
+        .env_remove("CARGO_TARGET_DIR")
         // Don't output incremental build artifacts
         .env("CARGO_INCREMENTAL", "0")
         .arg("build")
@@ -392,7 +403,12 @@ fn recursive_multiple_root_workspaces() -> TestResult {
 
     // Run a dry-run of cargo-sweep ("clean") in the target directory (recursive)
     let args = &["-r", "--time", "0", "--dry-run"];
-    let expected_cleaned = clean_and_parse(args, |cmd| cmd.current_dir(target.path()))?;
+    let expected_cleaned = clean_and_parse(args, |cmd| {
+        // If someone has built & run these tests with CARGO_TARGET_DIR,
+        // we need to override that.
+        cmd.env_remove("CARGO_TARGET_DIR")
+            .current_dir(target.path())
+    })?;
     assert!(expected_cleaned > 0);
     let size_after_dry_run_clean = get_size(target.path())?;
     // Make sure that nothing was actually cleaned
@@ -400,7 +416,12 @@ fn recursive_multiple_root_workspaces() -> TestResult {
 
     // Run a proper cargo-sweep ("clean") in the target directory (recursive)
     let args = &["-r", "--time", "0"];
-    let actual_cleaned = clean_and_parse(args, |cmd| cmd.current_dir(target.path()))?;
+    let actual_cleaned = clean_and_parse(args, |cmd| {
+        // If someone has built & run these tests with CARGO_TARGET_DIR,
+        // we need to override that.
+        cmd.env_remove("CARGO_TARGET_DIR")
+            .current_dir(target.path())
+    })?;
     assert_sweeped_size(target.path(), actual_cleaned, final_build_size)?;
     assert_eq!(actual_cleaned, expected_cleaned);
 
