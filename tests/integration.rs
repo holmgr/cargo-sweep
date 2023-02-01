@@ -7,8 +7,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use assert_cmd::Command;
-use assert_cmd::{assert::Assert, cargo::cargo_bin};
+use assert_cmd::{assert::Assert, cargo::cargo_bin, Command};
 use fs_extra::dir::get_size;
 use predicates::{
     prelude::PredicateBooleanExt,
@@ -221,9 +220,9 @@ fn empty_project_output() -> TestResult {
             \),
         \]
         \[DEBUG\] cleaning: ".+debug" with remove_not_built_with_in_a_profile
-        \[DEBUG\] Successfully removed: ".+libsample_project-.+\.rlib"
-        \[DEBUG\] Successfully removed: ".+libsample_project-.+\.rmeta"
-        \[DEBUG\] Successfully removed: ".+sample_project-.+\.d"
+        \[DEBUG\] Successfully removed: ".+debug.+deps.+sample_project.+"
+        \[DEBUG\] Successfully removed: ".+debug.+deps.+sample_project.+"
+        \[DEBUG\] Successfully removed: ".+debug.+deps.+sample_project.+"
         \[DEBUG\] Successfully removed: ".+.fingerprint.+sample-project-.+"
         \[INFO\] Cleaned .+ from ".+""#,
     );
@@ -301,13 +300,14 @@ fn golden_reference(args: &[&str], file: &str) -> TestResult {
     let mut assert = run(cmd.args(args), None);
 
     assert = assert.stderr(is_empty());
-    let actual = std::str::from_utf8(&assert.get_output().stdout)?;
+    let mut actual = String::from_utf8(assert.get_output().stdout.clone())?;
 
     if std::env::var("BLESS").as_deref() == Ok("1") {
         fs::write(file, actual)?;
     } else {
         let mut expected = fs::read_to_string(file).context("failed to read usage file")?;
         content_normalize(&mut expected);
+        content_normalize(&mut actual);
         assert_eq!(actual, expected);
     }
     Ok(())
@@ -328,9 +328,7 @@ fn path() -> TestResult {
 }
 
 fn content_normalize(content: &mut String) {
-    if !cfg!(windows) {
-        *content = content.replace("cargo-sweep.exe", "cargo-sweep");
-    }
+    *content = content.replace("cargo-sweep.exe", "cargo-sweep");
     *content = content.replace("\r\n", "\n");
 }
 
