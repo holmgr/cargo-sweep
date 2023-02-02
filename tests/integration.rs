@@ -39,9 +39,9 @@ fn project_dir(project: &str) -> PathBuf {
     test_dir().join(project)
 }
 
-fn cargo(project: &str) -> Command {
+fn cargo(cmd_current_dir: impl AsRef<Path>) -> Command {
     let mut cmd = Command::new(env!("CARGO"));
-    cmd.current_dir(project_dir(project));
+    cmd.current_dir(cmd_current_dir);
     cmd
 }
 
@@ -71,7 +71,7 @@ fn run(mut cmd: impl BorrowMut<Command>) -> Assert {
 fn build(project: &str) -> Result<(u64, TempDir)> {
     let target = tempdir()?;
     let old_size = get_size(target.path())?;
-    run(cargo(project)
+    run(cargo(project_dir(project))
         .arg("build")
         .env("CARGO_TARGET_DIR", target.path()));
     let new_size = get_size(target.path())?;
@@ -364,41 +364,35 @@ fn usage() -> TestResult {
 /// * `CARGO_INCREMENTAL` to `0`, because cargo-sweep doesn't yet clear incremental files.
 #[test]
 fn recursive_multiple_root_workspaces() -> TestResult {
-    let target = tempdir()?;
+    let temp_workspace_dir = tempdir()?;
 
     let nested_workspace_dir = test_dir().join("nested-root-workspace");
     let options = CopyOptions::default();
 
     // Copy the whole nested-root-workspace folder (and its content) into the new temp dir,
     // and then `cargo build` and run the sweep tests inside that directory.
-    fs_extra::copy_items(&[&nested_workspace_dir], target.path(), &options)?;
+    fs_extra::copy_items(&[&nested_workspace_dir], temp_workspace_dir.path(), &options)?;
 
-    let old_size = get_size(target.path())?;
+    let old_size = get_size(temp_workspace_dir.path())?;
 
     // Build bin-crate
-    run(Command::new(env!("CARGO"))
+    run(cargo(temp_workspace_dir.path().join("nested-root-workspace/bin-crate"))
         // If someone has built & run these tests with CARGO_TARGET_DIR,
         // we need to override that.
         .env_remove("CARGO_TARGET_DIR")
-        // Don't output incremental build artifacts
-        .env("CARGO_INCREMENTAL", "0")
-        .arg("build")
-        .current_dir(target.path().join("nested-root-workspace/bin-crate")));
+        .arg("build"));
 
-    let intermediate_build_size = get_size(target.path())?;
+    let intermediate_build_size = get_size(temp_workspace_dir.path())?;
     assert!(intermediate_build_size > old_size);
 
     // Build workspace crates
-    run(Command::new(env!("CARGO"))
+    run(cargo(temp_workspace_dir.path().join("nested-root-workspace"))
         // If someone has built & run these tests with CARGO_TARGET_DIR,
         // we need to override that.
         .env_remove("CARGO_TARGET_DIR")
-        // Don't output incremental build artifacts
-        .env("CARGO_INCREMENTAL", "0")
-        .arg("build")
-        .current_dir(target.path().join("nested-root-workspace")));
+        .arg("build"));
 
-    let final_build_size = get_size(target.path())?;
+    let final_build_size = get_size(temp_workspace_dir.path())?;
     assert!(final_build_size > intermediate_build_size);
 
     // Run a dry-run of cargo-sweep ("clean") in the target directory (recursive)
@@ -407,10 +401,10 @@ fn recursive_multiple_root_workspaces() -> TestResult {
         // If someone has built & run these tests with CARGO_TARGET_DIR,
         // we need to override that.
         cmd.env_remove("CARGO_TARGET_DIR")
-            .current_dir(target.path())
+            .current_dir(temp_workspace_dir.path())
     })?;
     assert!(expected_cleaned > 0);
-    let size_after_dry_run_clean = get_size(target.path())?;
+    let size_after_dry_run_clean = get_size(temp_workspace_dir.path())?;
     // Make sure that nothing was actually cleaned
     assert_eq!(final_build_size, size_after_dry_run_clean);
 
@@ -420,9 +414,9 @@ fn recursive_multiple_root_workspaces() -> TestResult {
         // If someone has built & run these tests with CARGO_TARGET_DIR,
         // we need to override that.
         cmd.env_remove("CARGO_TARGET_DIR")
-            .current_dir(target.path())
+            .current_dir(temp_workspace_dir.path())
     })?;
-    assert_sweeped_size(target.path(), actual_cleaned, final_build_size)?;
+    assert_sweeped_size(temp_workspace_dir.path(), actual_cleaned, final_build_size)?;
     assert_eq!(actual_cleaned, expected_cleaned);
 
     Ok(())
