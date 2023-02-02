@@ -1,6 +1,8 @@
+```console
+$ cargo-sweep -h
 A tool for cleaning unused build files created by Cargo
 
-Usage: cargo-sweep <COMMAND>
+Usage: cargo-sweep[EXE] <COMMAND>
 
 Commands:
   sweep  A tool for cleaning unused build files created by Cargo
@@ -9,3 +11,5 @@ Commands:
 Options:
   -h, --help     Print help information
   -V, --version  Print version information
+
+```

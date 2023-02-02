@@ -1,3 +1,5 @@
+```console
+$ cargo-sweep sweep -h
 A tool for cleaning unused build files created by Cargo
 
 Usage: cargo-sweep sweep [OPTIONS] <--stamp|--file|--time <TIME>|--installed|--toolchains <TOOLCHAINS>|--maxsize <MAXSIZE_MB>> [PATH]
@@ -18,3 +20,5 @@ Options:
   -v, --verbose                  Turn verbose information on
   -h, --help                     Print help information (use `--help` for more detail)
   -V, --version                  Print version information
+
+```

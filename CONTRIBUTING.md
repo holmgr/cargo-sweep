@@ -13,5 +13,5 @@ You may also want to set up the pre-push hook: `ln -s ../../ci/pre-push .git/hoo
 
 If you change the `--help` output, you will need to update the `usage` test:
 ```
-BLESS=1 cargo test usage
+TRYCMD=overwrite cargo test usage
 ```
