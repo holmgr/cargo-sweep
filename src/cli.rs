@@ -75,7 +75,7 @@ pub struct Args {
     stamp: bool,
 
     /// Number of days backwards to keep
-    #[arg(short, long)]
+    #[arg(short, long, value_name = "DAYS")]
     time: Option<u64>,
 
     /// Toolchains currently installed by rustup that should have their artifacts kept

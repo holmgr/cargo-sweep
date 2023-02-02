@@ -2,7 +2,7 @@
 $ cargo-sweep sweep -h
 A tool for cleaning unused build files created by Cargo
 
-Usage: cargo-sweep sweep [OPTIONS] <--stamp|--file|--time <TIME>|--installed|--toolchains <TOOLCHAINS>|--maxsize <MAXSIZE_MB>> [PATH]
+Usage: cargo-sweep[EXE] sweep [OPTIONS] <--stamp|--file|--time <DAYS>|--installed|--toolchains <TOOLCHAINS>|--maxsize <MAXSIZE_MB>> [PATH]
 
 Arguments:
   [PATH]  Path to check
@@ -15,7 +15,7 @@ Options:
   -m, --maxsize <MAXSIZE_MB>     Remove oldest artifacts until the target directory is below the specified size in MB
   -r, --recursive                Apply on all projects below the given path
   -s, --stamp                    Store timestamp file at the given path, is used by file option
-  -t, --time <TIME>              Number of days backwards to keep
+  -t, --time <DAYS>              Number of days backwards to keep
       --toolchains <TOOLCHAINS>  Toolchains currently installed by rustup that should have their artifacts kept
   -v, --verbose                  Turn verbose information on
   -h, --help                     Print help information (use `--help` for more detail)
