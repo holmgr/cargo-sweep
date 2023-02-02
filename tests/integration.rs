@@ -2,17 +2,13 @@ use std::{
     borrow::BorrowMut,
     env::temp_dir,
     fmt::Debug,
-    fs,
     path::{Path, PathBuf},
 };
 
 use anyhow::{Context, Result};
 use assert_cmd::{assert::Assert, cargo::cargo_bin, Command};
 use fs_extra::dir::get_size;
-use predicates::{
-    prelude::PredicateBooleanExt,
-    str::{contains, is_empty},
-};
+use predicates::{prelude::PredicateBooleanExt, str::contains};
 #[allow(unused_imports)]
 use pretty_assertions::{assert_eq, assert_ne};
 use regex::Regex;
@@ -295,24 +291,6 @@ fn error_status() -> TestResult {
     Ok(())
 }
 
-fn golden_reference(args: &[&str], file: &str) -> TestResult {
-    let mut cmd = Command::new(cargo_bin("cargo-sweep"));
-    let mut assert = run(cmd.args(args), None);
-
-    assert = assert.stderr(is_empty());
-    let mut actual = String::from_utf8(assert.get_output().stdout.clone())?;
-
-    if std::env::var("BLESS").as_deref() == Ok("1") {
-        fs::write(file, actual)?;
-    } else {
-        let mut expected = fs::read_to_string(file).context("failed to read usage file")?;
-        content_normalize(&mut expected);
-        content_normalize(&mut actual);
-        assert_eq!(actual, expected);
-    }
-    Ok(())
-}
-
 #[test]
 fn path() -> TestResult {
     let (_, target) = build("sample-project")?;
@@ -327,17 +305,8 @@ fn path() -> TestResult {
     Ok(())
 }
 
-fn content_normalize(content: &mut String) {
-    *content = content.replace("cargo-sweep.exe", "cargo-sweep");
-    *content = content.replace("\r\n", "\n");
-}
-
 #[test]
-fn subcommand_usage() -> TestResult {
-    golden_reference(&["sweep", "-h"], "tests/usage.txt")
-}
-
-#[test]
-fn standalone_usage() -> TestResult {
-    golden_reference(&["-h"], "tests/standalone-usage.txt")
+fn usage() -> TestResult {
+    trycmd::TestCases::new().case("tests/*.trycmd");
+    Ok(())
 }
