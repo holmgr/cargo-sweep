@@ -2,7 +2,7 @@
 $ cargo-sweep sweep --help
 A tool for cleaning unused build files created by Cargo
 
-Usage: cargo-sweep[EXE] sweep [OPTIONS] <--stamp|--file|--time <DAYS>|--installed|--toolchains <TOOLCHAINS>|--maxsize <MAXSIZE>> [PATH]...
+Usage: cargo-sweep[EXE] sweep [OPTIONS] <--stamp|--file|--all|--time <DAYS>|--installed|--toolchains <TOOLCHAINS>|--maxsize <MAXSIZE>> [PATH]...
 
 Arguments:
   [PATH]...
@@ -34,6 +34,9 @@ Options:
 
   -t, --time <DAYS>
           Number of days backwards to keep
+
+  -a, --all
+          Remove everything
 
       --toolchains <TOOLCHAINS>
           Toolchains currently installed by rustup that should have their artifacts kept
