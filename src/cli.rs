@@ -35,7 +35,7 @@ pub enum SweepCommand {
     group(
         ArgGroup::new("criterion")
             .required(true)
-            .args(["stamp", "file", "time", "installed", "toolchains", "maxsize"])
+            .args(["stamp", "file", "all", "time", "installed", "toolchains", "maxsize"])
     )
 )]
 pub struct Args {
@@ -80,6 +80,10 @@ pub struct Args {
     #[arg(short, long, value_name = "DAYS")]
     time: Option<u64>,
 
+    /// Remove everything
+    #[arg(short, long)]
+    all: bool,
+
     /// Toolchains currently installed by rustup that should have their artifacts kept
     #[arg(long, value_delimiter = ',')]
     toolchains: Vec<String>,
@@ -97,6 +101,7 @@ impl Args {
             _ if self.file => Criterion::File,
             _ if self.installed => Criterion::Installed,
             _ if !self.toolchains.is_empty() => Criterion::Toolchains(self.toolchains.clone()),
+            _ if self.all => Criterion::Time(0),
             Self {
                 time: Some(time), ..
             } => Criterion::Time(*time),
@@ -147,6 +152,7 @@ mod tests {
         assert!(parse("cargo sweep --installed").is_ok());
         assert!(parse("cargo sweep --file").is_ok());
         assert!(parse("cargo sweep --stamp").is_ok());
+        assert!(parse("cargo sweep --all").is_ok());
         assert!(parse("cargo sweep --time 30").is_ok());
         assert!(parse("cargo sweep --toolchains SAMPLE_TEXT").is_ok());
         assert!(parse("cargo sweep --maxsize 100").is_ok());
@@ -155,6 +161,7 @@ mod tests {
         assert!(parse("cargo-sweep sweep --installed").is_ok());
         assert!(parse("cargo-sweep sweep --file").is_ok());
         assert!(parse("cargo-sweep sweep --stamp").is_ok());
+        assert!(parse("cargo-sweep sweep --all").is_ok());
         assert!(parse("cargo-sweep sweep --time 30").is_ok());
         assert!(parse("cargo-sweep sweep --toolchains SAMPLE_TEXT").is_ok());
         assert!(parse("cargo-sweep sweep --maxsize 100").is_ok());
@@ -163,6 +170,7 @@ mod tests {
         assert!(parse("cargo sweep --installed --maxsize 100").is_err());
         assert!(parse("cargo sweep --file --installed").is_err());
         assert!(parse("cargo sweep --stamp --file").is_err());
+        assert!(parse("cargo sweep --time 30 --all").is_err());
         assert!(parse("cargo sweep --time 30 --stamp").is_err());
         assert!(parse("cargo sweep --toolchains SAMPLE_TEXT --time 30").is_err());
         assert!(parse("cargo sweep --maxsize 100 --toolchains SAMPLE_TEXT").is_err());
