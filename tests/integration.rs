@@ -371,29 +371,48 @@ fn recursive_multiple_root_workspaces() -> TestResult {
 
     // Copy the whole nested-root-workspace folder (and its content) into the new temp dir,
     // and then `cargo build` and run the sweep tests inside that directory.
-    fs_extra::copy_items(&[&nested_workspace_dir], temp_workspace_dir.path(), &options)?;
+    fs_extra::copy_items(
+        &[&nested_workspace_dir],
+        temp_workspace_dir.path(),
+        &options,
+    )?;
 
     let old_size = get_size(temp_workspace_dir.path())?;
 
     // Build bin-crate
-    run(cargo(temp_workspace_dir.path().join("nested-root-workspace/bin-crate"))
-        // If someone has built & run these tests with CARGO_TARGET_DIR,
-        // we need to override that.
-        .env_remove("CARGO_TARGET_DIR")
-        .arg("build"));
+    run(cargo(
+        temp_workspace_dir
+            .path()
+            .join("nested-root-workspace/bin-crate"),
+    )
+    // If someone has built & run these tests with CARGO_TARGET_DIR,
+    // we need to override that.
+    .env_remove("CARGO_TARGET_DIR")
+    .arg("build"));
 
     let intermediate_build_size = get_size(temp_workspace_dir.path())?;
     assert!(intermediate_build_size > old_size);
 
     // Build workspace crates
-    run(cargo(temp_workspace_dir.path().join("nested-root-workspace"))
-        // If someone has built & run these tests with CARGO_TARGET_DIR,
-        // we need to override that.
-        .env_remove("CARGO_TARGET_DIR")
-        .arg("build"));
+    run(
+        cargo(temp_workspace_dir.path().join("nested-root-workspace"))
+            // If someone has built & run these tests with CARGO_TARGET_DIR,
+            // we need to override that.
+            .env_remove("CARGO_TARGET_DIR")
+            .arg("build"),
+    );
 
     let final_build_size = get_size(temp_workspace_dir.path())?;
     assert!(final_build_size > intermediate_build_size);
+
+    // Measure the size of the nested root workspace and the bin crate before cargo-sweep is invoked.
+    let pre_clean_size_nested_root_workspace =
+        get_size(temp_workspace_dir.path().join("nested-root-workspace"))?;
+    let pre_clean_size_bin_create = get_size(
+        temp_workspace_dir
+            .path()
+            .join("nested-root-workspace/bin-crate"),
+    )?;
 
     // Run a dry-run of cargo-sweep ("clean") in the target directory (recursive)
     let args = &["-r", "--time", "0", "--dry-run"];
@@ -418,6 +437,21 @@ fn recursive_multiple_root_workspaces() -> TestResult {
     })?;
     assert_sweeped_size(temp_workspace_dir.path(), actual_cleaned, final_build_size)?;
     assert_eq!(actual_cleaned, expected_cleaned);
+
+    // Measure the size of the nested root workspace and the bin crate after cargo-sweep is invoked,
+    // and assert that both of their sizes have been reduced.
+    let post_clean_size_nested_root_workspace =
+        get_size(temp_workspace_dir.path().join("nested-root-workspace"))?;
+    let post_clean_size_bin_crate = get_size(
+        temp_workspace_dir
+            .path()
+            .join("nested-root-workspace/bin-crate"),
+    )?;
+    assert!(post_clean_size_nested_root_workspace < pre_clean_size_nested_root_workspace, "The size of the nested root workspace create has not been reduced after running cargo-sweep.");
+    assert!(
+        post_clean_size_bin_crate < pre_clean_size_bin_create,
+        "The size of the bin create has not been reduced after running cargo-sweep."
+    );
 
     Ok(())
 }
