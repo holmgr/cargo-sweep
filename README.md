@@ -21,13 +21,13 @@ cargo install cargo-sweep
 To clean all build files older than 30 days in the local cargo project run:
 
 ```
-cargo sweep -t 30
+cargo sweep --time 30
 ```
 
 To clean all build files not made by the currently installed (by rustup) nightly compiler:
 
 ```
-cargo sweep --toolchains="nightly"
+cargo sweep --toolchains nightly
 ```
 
 This can be useful if you checked that your library works on stable, but mostly develop on nightly.
@@ -36,46 +36,46 @@ This can be useful if you checked that your library works on stable, but mostly 
 To clean all build files not made by any of the currently installed (by rustup) compilers:
 
 ```
-cargo sweep -i
+cargo sweep --installed
 ```
 
 This can be useful if you just updated your compilers with a `rustup update`.
 
 Non-rustup environment are also supported. If `cargo-sweep` fails to run rustup, it fallbacks to bare `rustc` call (`rustc` must be installed and the path to it must be available through the PATH environment variable).
 
-To preview the results of a sweep run, which is recommended as a first step, add the `-d` flag, for instance:
+To preview the results of a sweep run, which is recommended as a first step, add the `--dry-run` flag, for instance:
 
 ```
-cargo sweep -d -t 30
+cargo sweep --dry-run --time 30
 ```
 
 You can also specify a path instead of defaulting to the current directory:
 
 ```
-cargo sweep -t 30 <path>
+cargo sweep --time 30 <path>
 ```
 
 To clean everything but the latest build you will need to run it in several steps.
 
 ```
-cargo sweep -s
+cargo sweep --stamp
 
 <Insert any number of cargo build, cargo test etc...>
 
-cargo sweep -f
+cargo sweep --file
 ```
-The first step generates a timestamp file which will be used to clean everything that was not used between it and the next time the file (-f) option is used.
+The first step generates a timestamp file which will be used to clean everything that was not used between it and the next time the file (--file) option is used.
 
-Finally, you can recursively clean all cargo project below a given path by adding the `-r` flag, for instance:
+Finally, you can recursively clean all cargo project below a given path by adding the `--recursive` flag, for instance:
 
 ```
-cargo sweep -r -t 30 code/github.com/holmgr/
+cargo sweep --recursive --time 30 path/to/project
 ```
 
 For more information run:
 
 ```
-cargo sweep -h
+cargo sweep --help
 ```
 
 ## License
