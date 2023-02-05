@@ -109,7 +109,8 @@ fn find_cargo_projects(root: &Path, include_hidden: bool) -> Vec<PathBuf> {
             }
             if let Some(target_directory) = is_cargo_root(entry.path()) {
                 target_paths.insert(target_directory);
-                iter.skip_current_dir(); // no reason to look at the src and such
+                // Previously cargo-sweep skipped subdirectories here, but it is valid for
+                // subdirectories to contain cargo roots.
             }
         }
     }
