@@ -65,7 +65,7 @@ fn run(mut cmd: impl BorrowMut<Command>) -> Assert {
 }
 
 /// Runs a cargo build of the named project (which is expected to exist as a direct
-/// child of the `tests` directory.
+/// child of the `tests` directory).
 /// Returns the size of the build directory, as well as the [TempDir] of the unique
 /// temporary build target directory.
 fn build(project: &str) -> Result<(u64, TempDir)> {
@@ -350,18 +350,14 @@ fn usage() -> TestResult {
 /// * Create a new temporary directory. Other tests only output the built files into
 ///   the target directory, but this test copies the whole template project into the
 ///   target directory.
-/// * Build the two different (nested) projects using cargo build, but without incremental
-///   compilation, because cargo-sweep doesn't remove files built by incremental compilation,
-///   which affects this test since this test doesn't use a separate target folder for just
-///   the target files.
+/// * Build the two different (nested) projects using cargo build.
 /// * Do a dry run sweep, asserting that nothing was actually cleaned.
 /// * Do a proper sweep, asserting that the target directory size is back down to its
 ///   expected size.
 ///
-/// Please note that there is some ceremony involved, namely correctly setting:
-/// * `CARGO_TARGET_DIR` to `unset`, so as not to clash with users who use `CARGO_TARGET_DIR`
+/// Please note that there is some ceremony involved, namely correctly setting
+/// `CARGO_TARGET_DIR` to `unset`, so as not to clash with users who use `CARGO_TARGET_DIR`
 ///   when they invoke `cargo test` for running these tests.
-/// * `CARGO_INCREMENTAL` to `0`, because cargo-sweep doesn't yet clear incremental files.
 #[test]
 fn recursive_multiple_root_workspaces() -> TestResult {
     let temp_workspace_dir = tempdir()?;
@@ -440,6 +436,8 @@ fn recursive_multiple_root_workspaces() -> TestResult {
 
     // Measure the size of the nested root workspace and the bin crate after cargo-sweep is invoked,
     // and assert that both of their sizes have been reduced.
+    // This works because by default cargo generates the `target/` directory in a sub-directory
+    // of the package root.
     let post_clean_size_nested_root_workspace =
         get_size(temp_workspace_dir.path().join("nested-root-workspace"))?;
     let post_clean_size_bin_crate = get_size(
