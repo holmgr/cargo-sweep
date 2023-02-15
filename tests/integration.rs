@@ -577,3 +577,24 @@ fn multiple_paths_and_stamp_errors() -> TestResult {
 
     Ok(())
 }
+
+#[test]
+fn check_toolchain_listing_on_multiple_projects() -> TestResult {
+    let args = &["sweep", "--dry-run", "--recursive", "--installed"];
+    let assert = run(Command::new(cargo_bin("cargo-sweep"))
+        .args(args)
+        .current_dir("tests/"));
+
+    let stdout = std::str::from_utf8(&assert.get_output().stdout).unwrap();
+    let lines = stdout
+        .lines()
+        .filter(|line| line.starts_with("[INFO]"))
+        .collect::<Vec<_>>();
+
+    assert_eq!(lines.len(), 3);
+    assert!(lines[0].starts_with("[INFO] Using all installed toolchains:"));
+    assert!(lines[1].starts_with("[INFO] Would clean:"));
+    assert!(lines[2].starts_with("[INFO] Would clean:"));
+
+    Ok(())
+}
