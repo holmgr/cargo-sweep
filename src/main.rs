@@ -206,7 +206,8 @@ fn main() -> anyhow::Result<()> {
         }
     } else {
         let keep_duration = if let Criterion::File = criterion {
-            let ts = Timestamp::load(path.as_path()).expect("Failed to load timestamp file");
+            let ts =
+                Timestamp::load(path.as_path(), dry_run).expect("Failed to load timestamp file");
             Duration::from(ts)
         } else if let Criterion::Time(days_to_keep) = criterion {
             Duration::from_secs(days_to_keep * 24 * 3600)

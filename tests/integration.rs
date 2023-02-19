@@ -214,9 +214,10 @@ fn stamp_file() -> TestResult {
     let expected_cleaned = count_cleaned_dry_run(&target, args, size)?;
     assert!(expected_cleaned > 0);
 
-    // For some reason, we delete the stamp file after `--file` :(
-    // Recreate it.
-    run(sweep(&["--stamp"]).env("CARGO_TARGET_DIR", target.path()));
+    // stamp file shouldn't be removed on dry run
+    assert!(project_dir("sample-project")
+        .join("sweep.timestamp")
+        .exists());
 
     let actual_cleaned = count_cleaned(&target, args, size)?;
     assert_eq!(actual_cleaned, expected_cleaned);
