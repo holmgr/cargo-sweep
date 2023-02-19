@@ -199,6 +199,11 @@ fn all_flags() -> TestResult {
 #[test]
 fn stamp_file() -> TestResult {
     let (size, target) = build("sample-project")?;
+    let stamp_file_exists = || {
+        project_dir("sample-project")
+            .join("sweep.timestamp")
+            .exists()
+    };
 
     // Create a stamp file for --file.
     let assert = run(sweep(&["--stamp"]).env("CARGO_TARGET_DIR", target.path()));
@@ -206,20 +211,19 @@ fn stamp_file() -> TestResult {
         "{}",
         std::str::from_utf8(&assert.get_output().stdout).unwrap()
     );
-    assert!(project_dir("sample-project")
-        .join("sweep.timestamp")
-        .exists());
+
+    assert!(stamp_file_exists(), "failed to create stamp file");
 
     let args = &["--file"];
     let expected_cleaned = count_cleaned_dry_run(&target, args, size)?;
     assert!(expected_cleaned > 0);
 
-    // For some reason, we delete the stamp file after `--file` :(
-    // Recreate it.
-    run(sweep(&["--stamp"]).env("CARGO_TARGET_DIR", target.path()));
+    assert!(stamp_file_exists(), "failed to keep stamp file on dry run");
 
     let actual_cleaned = count_cleaned(&target, args, size)?;
     assert_eq!(actual_cleaned, expected_cleaned);
+
+    assert!(!stamp_file_exists(), "failed to yeet stamp file after run");
 
     Ok(())
 }
