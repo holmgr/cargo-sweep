@@ -282,7 +282,7 @@ fn hidden() -> TestResult {
 
     run(&["--maxsize", "0", "-r", "--hidden"]);
     assert!(
-        get_size(target.path())? < size,
+        dbg!(get_size(target.path()))? < size,
         "old_size={}, new_size={}",
         size,
         get_size(target.path())?

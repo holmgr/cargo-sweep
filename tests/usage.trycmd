@@ -2,10 +2,10 @@
 $ cargo-sweep sweep -h
 A tool for cleaning unused build files created by Cargo
 
-Usage: cargo-sweep[EXE] sweep [OPTIONS] <--stamp|--file|--time <DAYS>|--installed|--toolchains <TOOLCHAINS>|--maxsize <MAXSIZE_MB>> [PATH]
+Usage: cargo-sweep[EXE] sweep [OPTIONS] <--stamp|--file|--time <DAYS>|--installed|--toolchains <TOOLCHAINS>|--maxsize <MAXSIZE_MB>> [PATH]...
 
 Arguments:
-  [PATH]  Path to check
+  [PATH]...  Path to check
 
 Options:
   -d, --dry-run                  Dry run which will not delete any files
