@@ -51,9 +51,9 @@ fn setup_logging(verbose: bool) {
                     ),
                     level = colors_level.color(record.level()),
                     message = message,
-                ))
+                ));
             } else {
-                out.finish(format_args!("[{}] {message}", record.level()))
+                out.finish(format_args!("[{}] {message}", record.level()));
             }
         })
         .level(level)
@@ -79,8 +79,7 @@ fn is_hidden(entry: &walkdir::DirEntry) -> bool {
     entry
         .file_name()
         .to_str()
-        .map(|s| s.starts_with('.'))
-        .unwrap_or(false)
+        .map_or(false, |s| s.starts_with('.'))
 }
 
 /// Find all cargo project under the given root path.
@@ -138,30 +137,43 @@ fn main() -> anyhow::Result<()> {
     setup_logging(args.verbose);
 
     // Default to current invocation path.
-    let path = args
-        .path
-        .unwrap_or_else(|| env::current_dir().expect("Failed to get current directory"));
+    let paths = match args.path.len() {
+        0 => vec![env::current_dir().expect("Failed to get current directory")],
+        _ => args.path,
+    };
 
+    // FIXME: Change to write to every passed in path instead of just the first one
     if let Criterion::Stamp = criterion {
-        debug!("Writing timestamp file in: {:?}", path);
-        return Timestamp::new()
-            .store(path.as_path())
-            .context("Failed to write timestamp file");
-    }
-
-    let paths = if args.recursive {
-        find_cargo_projects(&path, args.hidden)
-    } else {
-        let metadata = metadata(&path).context(format!(
-            "Failed to gather metadata for {:?}",
-            path.display()
-        ))?;
-        let out = Path::new(&metadata.target_directory).to_path_buf();
-        if out.exists() {
-            vec![out]
-        } else {
-            anyhow::bail!("Failed to clean {:?} as it does not exist.", out);
+        if paths.len() > 1 {
+            anyhow::bail!("Using multiple paths and --stamp is currently unsupported")
         }
+
+        debug!("Writing timestamp file in: {:?}", paths[0]);
+        return Timestamp::new()
+            .store(paths[0].as_path())
+            .context("Failed to write timestamp file");
+    };
+
+    let processed_paths = if args.recursive {
+        paths
+            .iter()
+            .flat_map(|path| find_cargo_projects(path, args.hidden))
+            .collect::<Vec<_>>()
+    } else {
+        let mut return_paths = Vec::with_capacity(paths.len());
+        for path in &paths {
+            let metadata = metadata(path).context(format!(
+                "Failed to gather metadata for {:?}",
+                path.display()
+            ))?;
+            let out = Path::new(&metadata.target_directory).to_path_buf();
+            if out.exists() {
+                return_paths.push(out);
+            } else {
+                anyhow::bail!("Failed to clean {:?} as it does not exist.", out)
+            };
+        }
+        return_paths
     };
 
     let toolchains = match &criterion {
@@ -170,13 +182,13 @@ fn main() -> anyhow::Result<()> {
         _ => None,
     };
     if let Some(toolchains) = toolchains {
-        for project_path in &paths {
+        for project_path in &processed_paths {
             match remove_not_built_with(project_path, &toolchains, dry_run) {
                 Ok(cleaned_amount) if dry_run => {
                     info!(
                         "Would clean: {} from {project_path:?}",
                         format_bytes(cleaned_amount)
-                    )
+                    );
                 }
                 Ok(cleaned_amount) => info!(
                     "Cleaned {} from {project_path:?}",
@@ -189,13 +201,13 @@ fn main() -> anyhow::Result<()> {
             };
         }
     } else if let Criterion::MaxSize(size) = criterion {
-        for project_path in &paths {
+        for project_path in &processed_paths {
             match remove_older_until_fits(project_path, size, dry_run) {
                 Ok(cleaned_amount) if dry_run => {
                     info!(
                         "Would clean: {} from {project_path:?}",
                         format_bytes(cleaned_amount)
-                    )
+                    );
                 }
                 Ok(cleaned_amount) => info!(
                     "Cleaned {} from {project_path:?}",
@@ -206,22 +218,22 @@ fn main() -> anyhow::Result<()> {
         }
     } else {
         let keep_duration = if let Criterion::File = criterion {
-            let ts =
-                Timestamp::load(path.as_path(), dry_run).expect("Failed to load timestamp file");
+            let ts = Timestamp::load(paths[0].as_path(), dry_run)
+                .expect("Failed to load timestamp file");
             Duration::from(ts)
         } else if let Criterion::Time(days_to_keep) = criterion {
             Duration::from_secs(days_to_keep * 24 * 3600)
         } else {
-            unreachable!();
+            unreachable!("unknown criteria {:?}", criterion);
         };
 
-        for project_path in &paths {
+        for project_path in &processed_paths {
             match remove_older_than(project_path, &keep_duration, dry_run) {
                 Ok(cleaned_amount) if dry_run => {
                     info!(
                         "Would clean: {} from {project_path:?}",
                         format_bytes(cleaned_amount)
-                    )
+                    );
                 }
                 Ok(cleaned_amount) => info!(
                     "Cleaned {} from {project_path:?}",

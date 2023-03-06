@@ -2,6 +2,7 @@ use std::{
     borrow::BorrowMut,
     env::temp_dir,
     fmt::Debug,
+    fs,
     path::{Path, PathBuf},
 };
 
@@ -454,6 +455,125 @@ fn recursive_multiple_root_workspaces() -> TestResult {
         post_clean_size_bin_crate < pre_clean_size_bin_create,
         "The size of the bin create has not been reduced after running cargo-sweep."
     );
+
+    Ok(())
+}
+
+/// This test follows the logic of the recursive multiple root test, however, instead of recursing it passes each workspace individually.
+#[test]
+fn multiple_paths() -> TestResult {
+    let project_root_path = tempdir()?;
+
+    let crate_dir = test_dir().join("sample-project");
+    let options = CopyOptions::default();
+
+    let project_names = ["sample-project-1", "sample-project-2"];
+
+    // Copy the sample project folder twice
+    // and then `cargo build` and run the sweep tests inside that directory.
+    for project_name in &project_names {
+        fs_extra::dir::copy(&crate_dir, project_root_path.path(), &options)?;
+        fs::rename(
+            project_root_path
+                .path()
+                .join(crate_dir.file_name().unwrap()),
+            dbg!(project_root_path.path().join(project_name)),
+        )?;
+    }
+
+    let old_size = get_size(project_root_path.path())?;
+
+    // Build crates
+    for path in &project_names {
+        run(cargo(project_root_path.path().join(path))
+            // If someone has built & run these tests with CARGO_TARGET_DIR,
+            // we need to override that.
+            .env_remove("CARGO_TARGET_DIR")
+            .arg("build"));
+    }
+
+    let final_build_size = get_size(project_root_path.path())?;
+    // Calculate the size of each individual crate
+    let final_built_crates_size =
+        project_names.map(|path| get_size(project_root_path.path().join(path)).unwrap());
+
+    assert!(final_build_size > old_size);
+
+    // Measure the size of the crates before cargo-sweep is invoked.
+    // Run a dry-run of cargo-sweep ("clean") in the target directory of all the crates
+    let mut args = vec!["--time", "0", "--dry-run"];
+    args.append(&mut project_names.to_vec());
+
+    let expected_cleaned = clean_and_parse(&args, |cmd| {
+        // If someone has built & run these tests with CARGO_TARGET_DIR,
+        // we need to override that.
+        cmd.env_remove("CARGO_TARGET_DIR")
+            .current_dir(project_root_path.path())
+    })?;
+
+    assert!(expected_cleaned > 0);
+    let size_after_dry_run_clean = get_size(project_root_path.path())?;
+    // Make sure that nothing was actually cleaned
+    assert_eq!(final_build_size, size_after_dry_run_clean);
+
+    // Run a proper cargo-sweep ("clean") in the target directories
+    let mut args = vec!["--time", "0"];
+    args.append(&mut project_names.to_vec());
+
+    let actual_cleaned = clean_and_parse(&args, |cmd| {
+        // If someone has built & run these tests with CARGO_TARGET_DIR,
+        // we need to override that.
+        cmd.env_remove("CARGO_TARGET_DIR")
+            .current_dir(project_root_path.path())
+    })?;
+
+    assert_sweeped_size(project_root_path.path(), actual_cleaned, final_build_size)?;
+    assert_eq!(actual_cleaned, expected_cleaned);
+
+    // Assert that each crate was cleaned
+    let cleaned_crates_size =
+        project_names.map(|path| get_size(project_root_path.path().join(path)).unwrap());
+
+    final_built_crates_size
+        .iter()
+        .zip(cleaned_crates_size.iter())
+        .for_each(|(a, b)| assert!(a > b));
+
+    Ok(())
+}
+
+#[test]
+fn multiple_paths_and_stamp_errors() -> TestResult {
+    let project_root_path = tempdir()?;
+
+    let crate_dir = test_dir().join("sample-project");
+    let options = CopyOptions::default();
+
+    let project_names = ["sample-project-1", "sample-project-2"];
+
+    // Copy the sample project folder twice
+    // and then `cargo build` and run the sweep tests inside that directory.
+    for project_name in &project_names {
+        fs_extra::dir::copy(&crate_dir, project_root_path.path(), &options)?;
+        fs::rename(
+            project_root_path
+                .path()
+                .join(crate_dir.file_name().unwrap()),
+            dbg!(project_root_path.path().join(project_name)),
+        )?;
+    }
+
+    let mut args = vec!["--stamp"];
+    args.append(&mut project_names.to_vec());
+
+    sweep(&args)
+        .env_remove("CARGO_TARGET_DIR")
+        .current_dir(project_root_path.path())
+        .assert()
+        .failure()
+        .stderr(contains(
+            "Using multiple paths and --stamp is currently unsupported",
+        ));
 
     Ok(())
 }

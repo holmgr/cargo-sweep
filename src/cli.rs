@@ -37,7 +37,7 @@ pub enum SweepCommand {
 )]
 pub struct Args {
     /// Path to check
-    pub path: Option<PathBuf>,
+    pub path: Vec<PathBuf>,
 
     /// Dry run which will not delete any files
     #[arg(short, long)]
@@ -106,6 +106,7 @@ impl Args {
     }
 }
 
+#[derive(Debug)]
 pub enum Criterion {
     Stamp,
     File,
@@ -158,6 +159,5 @@ mod tests {
             ..Args::default()
         };
         assert_eq!(args, parse("cargo sweep --toolchains 1,2,3").unwrap());
-        assert!(parse("cargo sweep --toolchains 1 2 3").is_err());
     }
 }
