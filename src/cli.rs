@@ -37,7 +37,7 @@ pub enum SweepCommand {
 )]
 pub struct Args {
     /// Path to check
-    pub path: Option<Vec<PathBuf>>,
+    pub path: Vec<PathBuf>,
 
     /// Dry run which will not delete any files
     #[arg(short, long)]

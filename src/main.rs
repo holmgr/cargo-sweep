@@ -137,10 +137,12 @@ fn main() -> anyhow::Result<()> {
     setup_logging(args.verbose);
 
     // Default to current invocation path.
-    let paths = args
-        .path
-        .unwrap_or_else(|| vec![env::current_dir().expect("Failed to get current directory")]);
+    let paths = match args.path.len() {
+        0 => vec![env::current_dir().expect("Failed to get current directory")],
+        _ => args.path,
+    };
 
+    // FIXME: Change to write to every passed in path instead of just the first one
     if let Criterion::Stamp = criterion {
         if paths.len() > 1 {
             anyhow::bail!("Using multiple paths and --stamp is currently unsupported")
@@ -151,15 +153,6 @@ fn main() -> anyhow::Result<()> {
             .store(paths[0].as_path())
             .context("Failed to write timestamp file");
     };
-    // FIXME: Change to write to every passed in path instead of just the first one
-    // if let Criterion::Stamp = criterion {
-    //     return paths.iter().try_for_each(|path| {
-    //         debug!("Writing timestamp file in: {:?}", path);
-    //         Timestamp::new()
-    //             .store(path.as_path())
-    //             .context("Failed to write timestamp file")
-    //     });
-    // }
 
     let processed_paths = if args.recursive {
         paths
@@ -231,8 +224,7 @@ fn main() -> anyhow::Result<()> {
         } else if let Criterion::Time(days_to_keep) = criterion {
             Duration::from_secs(days_to_keep * 24 * 3600)
         } else {
-            dbg!(criterion);
-            unreachable!();
+            unreachable!("unknown criteria {:?}", criterion);
         };
 
         for project_path in &processed_paths {

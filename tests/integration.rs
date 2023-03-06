@@ -460,7 +460,6 @@ fn recursive_multiple_root_workspaces() -> TestResult {
 }
 
 /// This test follows the logic of the recursive multiple root test, however, instead of recursing it passes each workspace individually.
-
 #[test]
 fn multiple_paths() -> TestResult {
     let project_root_path = tempdir()?;
@@ -527,6 +526,7 @@ fn multiple_paths() -> TestResult {
         cmd.env_remove("CARGO_TARGET_DIR")
             .current_dir(project_root_path.path())
     })?;
+
     assert_sweeped_size(project_root_path.path(), actual_cleaned, final_build_size)?;
     assert_eq!(actual_cleaned, expected_cleaned);
 
