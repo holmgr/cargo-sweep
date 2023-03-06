@@ -518,7 +518,7 @@ fn multiple_paths() -> TestResult {
     assert_eq!(final_build_size, size_after_dry_run_clean);
 
     // Run a proper cargo-sweep ("clean") in the target directories
-    let mut args = vec!["-r", "--time", "0"];
+    let mut args = vec!["--time", "0"];
     args.append(&mut project_names.to_vec());
 
     let actual_cleaned = clean_and_parse(&args, |cmd| {
@@ -538,6 +538,42 @@ fn multiple_paths() -> TestResult {
         .iter()
         .zip(cleaned_crates_size.iter())
         .for_each(|(a, b)| assert!(a > b));
+
+    Ok(())
+}
+
+#[test]
+fn multiple_paths_and_stamp_errors() -> TestResult {
+    let project_root_path = tempdir()?;
+
+    let crate_dir = test_dir().join("sample-project");
+    let options = CopyOptions::default();
+
+    let project_names = ["sample-project-1", "sample-project-2"];
+
+    // Copy the sample project folder twice
+    // and then `cargo build` and run the sweep tests inside that directory.
+    for project_name in &project_names {
+        fs_extra::dir::copy(&crate_dir, project_root_path.path(), &options)?;
+        fs::rename(
+            project_root_path
+                .path()
+                .join(crate_dir.file_name().unwrap()),
+            dbg!(project_root_path.path().join(project_name)),
+        )?;
+    }
+
+    let mut args = vec!["--stamp"];
+    args.append(&mut project_names.to_vec());
+
+    sweep(&args)
+        .env_remove("CARGO_TARGET_DIR")
+        .current_dir(project_root_path.path())
+        .assert()
+        .failure()
+        .stderr(contains(
+            "Using multiple paths and --stamp is currently unsupported",
+        ));
 
     Ok(())
 }

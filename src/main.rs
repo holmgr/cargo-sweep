@@ -141,6 +141,16 @@ fn main() -> anyhow::Result<()> {
         .path
         .unwrap_or_else(|| vec![env::current_dir().expect("Failed to get current directory")]);
 
+    if let Criterion::Stamp = criterion {
+        if paths.len() > 1 {
+            anyhow::bail!("Using multiple paths and --stamp is currently unsupported")
+        }
+
+        debug!("Writing timestamp file in: {:?}", paths[0]);
+        return Timestamp::new()
+            .store(paths[0].as_path())
+            .context("Failed to write timestamp file");
+    };
     // FIXME: Change to write to every passed in path instead of just the first one
     // if let Criterion::Stamp = criterion {
     //     return paths.iter().try_for_each(|path| {
@@ -150,13 +160,6 @@ fn main() -> anyhow::Result<()> {
     //             .context("Failed to write timestamp file")
     //     });
     // }
-
-    if let Criterion::Stamp = criterion {
-        debug!("Writing timestamp file in: {:?}", paths[0]);
-        return Timestamp::new()
-            .store(paths[0].as_path())
-            .context("Failed to write timestamp file");
-    };
 
     let processed_paths = if args.recursive {
         paths
