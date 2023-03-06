@@ -141,23 +141,24 @@ fn main() -> anyhow::Result<()> {
         .path
         .unwrap_or_else(|| vec![env::current_dir().expect("Failed to get current directory")]);
 
-    if let Criterion::Stamp = criterion {
-        return paths.iter().try_for_each(|path| {
-            debug!("Writing timestamp file in: {:?}", path);
-            Timestamp::new()
-                .store(path.as_path())
-                .context("Failed to write timestamp file")
-        });
-    }
-
+    // FIXME: Change to write to every passed in path instead of just the first one
     // if let Criterion::Stamp = criterion {
-    //     debug!("Writing timestamp file in: {:?}", paths[0]);
-    //     return Timestamp::new()
-    //         .store(paths[0].as_path())
-    //         .context("Failed to write timestamp file");
+    //     return paths.iter().try_for_each(|path| {
+    //         debug!("Writing timestamp file in: {:?}", path);
+    //         Timestamp::new()
+    //             .store(path.as_path())
+    //             .context("Failed to write timestamp file")
+    //     });
     // }
 
-    let path = if args.recursive {
+    if let Criterion::Stamp = criterion {
+        debug!("Writing timestamp file in: {:?}", paths[0]);
+        return Timestamp::new()
+            .store(paths[0].as_path())
+            .context("Failed to write timestamp file");
+    };
+
+    let processed_paths = if args.recursive {
         paths
             .iter()
             .flat_map(|path| find_cargo_projects(path, args.hidden))
@@ -185,7 +186,7 @@ fn main() -> anyhow::Result<()> {
         _ => None,
     };
     if let Some(toolchains) = toolchains {
-        for project_path in &path {
+        for project_path in &processed_paths {
             match remove_not_built_with(project_path, &toolchains, dry_run) {
                 Ok(cleaned_amount) if dry_run => {
                     info!(
@@ -204,7 +205,7 @@ fn main() -> anyhow::Result<()> {
             };
         }
     } else if let Criterion::MaxSize(size) = criterion {
-        for project_path in &path {
+        for project_path in &processed_paths {
             match remove_older_until_fits(project_path, size, dry_run) {
                 Ok(cleaned_amount) if dry_run => {
                     info!(
@@ -231,7 +232,7 @@ fn main() -> anyhow::Result<()> {
             unreachable!();
         };
 
-        for project_path in &path {
+        for project_path in &processed_paths {
             match remove_older_than(project_path, &keep_duration, dry_run) {
                 Ok(cleaned_amount) if dry_run => {
                     info!(
