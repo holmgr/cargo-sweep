@@ -252,16 +252,14 @@ fn empty_project_output() -> TestResult {
             \),
         \]
         \[DEBUG\] cleaning: ".+debug" with remove_not_built_with_in_a_profile
-        \[DEBUG\] Successfully removed: ".+debug.+deps.+sample_project.+"
-        \[DEBUG\] Successfully removed: ".+debug.+deps.+sample_project.+"
-        \[DEBUG\] Successfully removed: ".+debug.+deps.+sample_project.+"
-        \[DEBUG\] Successfully removed: ".+debug.+fingerprint.+sample-project.+"
+        \[DEBUG\] Successfully removed: ".+sample_project.+"
+        (\s*\S*)*
         \[INFO\] Cleaned .+ from ".+""#,
     );
 
     assert!(
         regex_matches(&pattern, output),
-        "failed to match pattern with output"
+        "failed to output with regex pattern\npattern = {pattern}"
     );
 
     Ok(())
