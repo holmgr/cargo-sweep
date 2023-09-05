@@ -390,26 +390,16 @@ fn rustup_toolchain_list() -> Option<Vec<String>> {
     }
 }
 
-pub fn remove_not_built_with(
-    dir: &Path,
-    rust_version_to_keep: &[String],
-    dry_run: bool,
-) -> Result<u64, Error> {
-    debug!("cleaning: {:?} with remove_not_built_with", dir);
-    let mut total_disk_space = 0;
-    let hashed_rust_version_to_keep = if !rust_version_to_keep.is_empty() {
-        info!(
-            "Using specified installed toolchains: {:?}",
-            rust_version_to_keep
-        );
-        lookup_from_names(rust_version_to_keep.iter().map(Some))?
+pub fn hash_toolchains(rust_versions: Option<&Vec<String>>) -> Result<HashSet<u64>, Error> {
+    let hashed_versions = if let Some(versions) = rust_versions {
+        info!("Using specified installed toolchains: {:?}", versions);
+        lookup_from_names(versions.iter().map(Some))?
     } else {
         match rustup_toolchain_list() {
             Some(list) => {
                 info!("Using all installed toolchains: {:?}", list);
                 lookup_from_names(list.iter().map(Some))?
             }
-
             None => {
                 info!("Couldn't identify the installed toolchains, using bare `rustc` call");
                 let list: Vec<Option<String>> = vec![None];
@@ -417,9 +407,20 @@ pub fn remove_not_built_with(
             }
         }
     };
+
+    Ok(hashed_versions)
+}
+
+pub fn remove_not_built_with(
+    dir: &Path,
+    hashed_rust_version_to_keep: &HashSet<u64>,
+    dry_run: bool,
+) -> Result<u64, Error> {
+    debug!("cleaning: {:?} with remove_not_built_with", dir);
+    let mut total_disk_space = 0;
     for fing in lookup_all_fingerprint_dirs(dir) {
         let path = fing.into_path();
-        let keep = load_all_fingerprints_built_with(&path, &hashed_rust_version_to_keep)?;
+        let keep = load_all_fingerprints_built_with(&path, hashed_rust_version_to_keep)?;
         total_disk_space +=
             remove_not_built_with_in_a_profile(path.parent().unwrap(), &keep, dry_run)?;
     }

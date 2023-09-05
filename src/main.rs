@@ -17,7 +17,9 @@ mod stamp;
 mod util;
 
 use self::cli::Criterion;
-use self::fingerprint::{remove_not_built_with, remove_older_than, remove_older_until_fits};
+use self::fingerprint::{
+    hash_toolchains, remove_not_built_with, remove_older_than, remove_older_until_fits,
+};
 use self::stamp::Timestamp;
 use self::util::format_bytes;
 
@@ -176,14 +178,25 @@ fn main() -> anyhow::Result<()> {
         return_paths
     };
 
+    // `None`: do not remove based on toolchain version
+    // `Some(None)`: remove all installed toolchains
+    // `Some(Some(Vec))`: remove only the specified toolchains
     let toolchains = match &criterion {
-        Criterion::Installed => Some(vec![]),
-        Criterion::Toolchains(vec) => Some(vec).cloned(),
+        Criterion::Installed => Some(None),
+        Criterion::Toolchains(vec) => Some(Some(vec.clone())),
         _ => None,
     };
     if let Some(toolchains) = toolchains {
+        let hashed_toolchains = match hash_toolchains(toolchains.as_ref()) {
+            Ok(toolchains) => toolchains,
+            Err(err) => {
+                error!("{:?}", err.context("Failed to load toolchains."));
+                return Ok(());
+            }
+        };
+
         for project_path in &processed_paths {
-            match remove_not_built_with(project_path, &toolchains, dry_run) {
+            match remove_not_built_with(project_path, &hashed_toolchains, dry_run) {
                 Ok(cleaned_amount) if dry_run => {
                     info!(
                         "Would clean: {} from {project_path:?}",

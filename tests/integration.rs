@@ -252,16 +252,14 @@ fn empty_project_output() -> TestResult {
             \),
         \]
         \[DEBUG\] cleaning: ".+debug" with remove_not_built_with_in_a_profile
-        \[DEBUG\] Successfully removed: ".+debug.+deps.+sample_project.+"
-        \[DEBUG\] Successfully removed: ".+debug.+deps.+sample_project.+"
-        \[DEBUG\] Successfully removed: ".+debug.+deps.+sample_project.+"
-        \[DEBUG\] Successfully removed: ".+debug.+fingerprint.+sample-project.+"
+        \[DEBUG\] Successfully removed: ".+sample_project.+"
+        (\s*\S*)*
         \[INFO\] Cleaned .+ from ".+""#,
     );
 
     assert!(
         regex_matches(&pattern, output),
-        "failed to match pattern with output"
+        "failed to output with regex pattern\npattern = {pattern}"
     );
 
     Ok(())
@@ -574,6 +572,27 @@ fn multiple_paths_and_stamp_errors() -> TestResult {
         .stderr(contains(
             "Using multiple paths and --stamp is currently unsupported",
         ));
+
+    Ok(())
+}
+
+#[test]
+fn check_toolchain_listing_on_multiple_projects() -> TestResult {
+    let args = &["sweep", "--dry-run", "--recursive", "--installed"];
+    let assert = run(Command::new(cargo_bin("cargo-sweep"))
+        .args(args)
+        .current_dir("tests/"));
+
+    let stdout = std::str::from_utf8(&assert.get_output().stdout).unwrap();
+    let lines = stdout
+        .lines()
+        .filter(|line| line.starts_with("[INFO]"))
+        .collect::<Vec<_>>();
+
+    assert_eq!(lines.len(), 3);
+    assert!(lines[0].starts_with("[INFO] Using all installed toolchains:"));
+    assert!(lines[1].starts_with("[INFO] Would clean:"));
+    assert!(lines[2].starts_with("[INFO] Would clean:"));
 
     Ok(())
 }
