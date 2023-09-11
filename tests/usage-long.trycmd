@@ -36,7 +36,7 @@ Options:
           Number of days backwards to keep
 
   -a, --all
-          Remove everything
+          Apply on all provided projects
 
       --toolchains <TOOLCHAINS>
           Toolchains currently installed by rustup that should have their artifacts kept
