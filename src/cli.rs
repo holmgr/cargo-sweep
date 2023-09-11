@@ -80,7 +80,7 @@ pub struct Args {
     #[arg(short, long, value_name = "DAYS")]
     time: Option<u64>,
 
-    /// Remove everything
+    /// Apply on all provided projects
     #[arg(short, long)]
     all: bool,
 

@@ -16,7 +16,7 @@ Options:
   -r, --recursive                Apply on all projects below the given path
   -s, --stamp                    Store timestamp file at the given path, is used by file option
   -t, --time <DAYS>              Number of days backwards to keep
-  -a, --all                      Remove everything
+  -a, --all                      Apply on all provided projects
       --toolchains <TOOLCHAINS>  Toolchains currently installed by rustup that should have their artifacts kept
   -v, --verbose...               Enable DEBUG logs (use twice for TRACE logs)
   -h, --help                     Print help (see more with '--help')
