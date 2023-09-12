@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - No longer give a hard error when a custom toolchain gives an error [#67](https://github.com/holmgr/cargo-sweep/pull/67)
 - Don't print colors when stdout is not a terminal [#69](https://github.com/holmgr/cargo-sweep/pull/69)
+- Add long `--verbose` and `--recursive` flags [#73](https://github.com/holmgr/cargo-sweep/pull/73)
 - Make `-r/--recursive` traverse beyond Cargo directories [#78](https://github.com/holmgr/cargo-sweep/pull/78)
 - Reduce non-verbose output to make it less noisy [#81](https://github.com/holmgr/cargo-sweep/pull/81)
 - Refactor and add `-m` as a short flag for `--maxsize` [#87](https://github.com/holmgr/cargo-sweep/pull/87)
