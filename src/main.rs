@@ -25,11 +25,11 @@ use self::stamp::Timestamp;
 use self::util::format_bytes;
 
 /// Setup logging according to verbose flag.
-fn setup_logging(verbose: bool) {
-    let level = if verbose {
-        log::LevelFilter::Debug
-    } else {
-        log::LevelFilter::Info
+fn setup_logging(verbosity_level: u8) {
+    let level = match verbosity_level {
+        0 => log::LevelFilter::Info,
+        1 => log::LevelFilter::Debug,
+        2.. => log::LevelFilter::Trace,
     };
 
     let isatty = std::io::stdout().is_tty();
