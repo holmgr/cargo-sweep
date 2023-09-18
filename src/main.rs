@@ -2,6 +2,7 @@ use anyhow::Context;
 use cargo_metadata::{Error, Metadata, MetadataCommand};
 use crossterm::tty::IsTty;
 use fern::colors::{Color, ColoredLevelConfig};
+
 use log::{debug, error, info};
 use std::{
     env,
@@ -25,14 +26,6 @@ use self::util::format_bytes;
 
 /// Setup logging according to verbose flag.
 fn setup_logging(verbose: bool) {
-    // configure colors for the whole line
-    let colors_line = ColoredLevelConfig::new()
-        .error(Color::Red)
-        .warn(Color::Yellow)
-        .info(Color::White)
-        .debug(Color::White)
-        .trace(Color::BrightBlack);
-
     let level = if verbose {
         log::LevelFilter::Debug
     } else {
@@ -41,25 +34,24 @@ fn setup_logging(verbose: bool) {
 
     let isatty = std::io::stdout().is_tty();
 
-    let colors_level = colors_line.info(Color::Green);
+    // Configure colors for each log line
+    let level_colors = ColoredLevelConfig::new()
+        .info(Color::Green)
+        .error(Color::Red)
+        .warn(Color::Yellow)
+        .debug(Color::BrightBlack);
+
     fern::Dispatch::new()
         .format(move |out, message, record| {
             if isatty {
-                out.finish(format_args!(
-                    "{color_line}[{level}{color_line}] {message}\x1B[0m",
-                    color_line = format_args!(
-                        "\x1B[{}m",
-                        colors_line.get_color(&record.level()).to_fg_str()
-                    ),
-                    level = colors_level.color(record.level()),
-                    message = message,
-                ));
+                let reset = "\x1B[0m";
+                let level_color = level_colors.color(record.level());
+                out.finish(format_args!("{reset}[{level_color}{reset}] {message}"));
             } else {
                 out.finish(format_args!("[{}] {message}", record.level()));
             }
         })
         .level(level)
-        .level_for("pretty_colored", log::LevelFilter::Trace)
         .chain(std::io::stdout())
         .apply()
         .unwrap();
