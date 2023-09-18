@@ -394,6 +394,26 @@ fn rustup_toolchain_list() -> Option<Vec<String>> {
 pub fn hash_toolchains(rust_versions: Option<&Vec<String>>) -> Result<HashSet<u64>, Error> {
     let hashed_versions = if let Some(versions) = rust_versions {
         info!("Using specified installed toolchains: {:?}", versions);
+
+        // Validate that the CLI provided toolchains exist
+        {
+            let Some(detected_toolchains) = rustup_toolchain_list() else {
+                bail!(
+                    "Failed to read output of `rustup toolchain list` to check if toolchains exist"
+                );
+            };
+
+            let inexistent_toolchain = versions
+                .iter()
+                .find(|version| !detected_toolchains.contains(version));
+
+            if let Some(inexistent_toolchain) = inexistent_toolchain {
+                bail!(
+                    "The provided toolchain {inexistent_toolchain} doens't exist, and could not be found in the output of `rustup toolchain list`, available toolchains are:\n {detected_toolchains:#?}"
+                );
+            }
+        }
+
         lookup_from_names(versions.iter().map(Some))?
     } else {
         match rustup_toolchain_list() {
