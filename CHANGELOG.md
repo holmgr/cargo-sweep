@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Exit with non-zero status on failure [#72](https://github.com/holmgr/cargo-sweep/pull/72)
 - Keep stamp file on dry run [#100](https://github.com/holmgr/cargo-sweep/pull/100)
 - Fix invisible output in white-themed terminals [#103](https://github.com/holmgr/cargo-sweep/pull/103)
+- Fix `--toolchains` not validating the provided toolchains [#115](https://github.com/holmgr/cargo-sweep/pull/115)
 
 ## **0.6.2** and prior
 
