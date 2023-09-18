@@ -126,7 +126,7 @@ fn metadata(path: &Path) -> Result<Metadata, Error> {
 fn main() -> anyhow::Result<()> {
     let args = cli::parse();
 
-    let criterion = args.criterion();
+    let criterion = args.criterion()?;
     let dry_run = args.dry_run;
     setup_logging(args.verbose);
 
