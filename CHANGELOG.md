@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support multiple projects as input via CLI [#101](https://github.com/holmgr/cargo-sweep/pull/101)
 - Add a `TRACE` log level enabled by two `--verbose` flags [#113](https://github.com/holmgr/cargo-sweep/pull/113)
 - Tell user when `--recursive` is busy traversing directories [#120](https://github.com/holmgr/cargo-sweep/pull/120)
+- Allow `--maxsize` to accept byte-unit sizes [#114](https://github.com/holmgr/cargo-sweep/pull/114)
 
 ### Fixed
 
