@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Display the total cleaned amount when sweeping multiple projects [#45](https://github.com/holmgr/cargo-sweep/pull/45)
 - No longer give a hard error when a custom toolchain gives an error [#67](https://github.com/holmgr/cargo-sweep/pull/67)
 - Don't print colors when stdout is not a terminal [#69](https://github.com/holmgr/cargo-sweep/pull/69)
 - Add long `--verbose` and `--recursive` flags [#73](https://github.com/holmgr/cargo-sweep/pull/73)
@@ -17,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactor and add `-m` as a short flag for `--maxsize` [#87](https://github.com/holmgr/cargo-sweep/pull/87)
 - Only show toolchain list once when using `--installed` [#88](https://github.com/holmgr/cargo-sweep/pull/88)
 - Support multiple projects as input via CLI [#101](https://github.com/holmgr/cargo-sweep/pull/101)
+- Add a `TRACE` log level enabled by two `--verbose` flags [#113](https://github.com/holmgr/cargo-sweep/pull/113)
 
 ### Fixed
 
@@ -24,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Kibibytes are now printed as `KiB`, not `kiB` [#69](https://github.com/holmgr/cargo-sweep/pull/69)
 - Exit with non-zero status on failure [#72](https://github.com/holmgr/cargo-sweep/pull/72)
 - Keep stamp file on dry run [#100](https://github.com/holmgr/cargo-sweep/pull/100)
+- Fix invisible output in white-themed terminals [#103](https://github.com/holmgr/cargo-sweep/pull/103)
 
 ## **0.6.2** and prior
 
