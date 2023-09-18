@@ -149,6 +149,7 @@ fn main() -> anyhow::Result<()> {
     };
 
     let processed_paths = if args.recursive {
+        info!("Searching recursively for Rust project folders");
         paths
             .iter()
             .flat_map(|path| find_cargo_projects(path, args.hidden))
