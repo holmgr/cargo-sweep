@@ -1,5 +1,6 @@
 #![allow(deprecated)]
 use anyhow::{bail, Context, Error};
+use log::trace;
 use log::{debug, info, warn};
 use serde_derive::Deserialize;
 use serde_json::from_str;
@@ -94,7 +95,7 @@ fn load_all_fingerprints_built_with(
             }
         }
     }
-    debug!("Hashs to keep: {:#?}", keep);
+    trace!("Hashs to keep: {:#?}", keep);
     Ok(keep)
 }
 
@@ -156,7 +157,7 @@ fn load_all_fingerprints_newer_than(
             }
         }
     }
-    debug!("Hashs to keep: {:#?}", keep);
+    trace!("Hashs to keep: {:#?}", keep);
     Ok(keep)
 }
 

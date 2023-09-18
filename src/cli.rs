@@ -82,9 +82,9 @@ pub struct Args {
     #[arg(long, value_delimiter = ',')]
     toolchains: Vec<String>,
 
-    /// Turn verbose information on
-    #[arg(short, long)]
-    pub verbose: bool,
+    /// Enable DEBUG logs (use twice for TRACE logs)
+    #[arg(short, long, action = clap::ArgAction::Count)]
+    pub verbose: u8,
 }
 
 impl Args {
