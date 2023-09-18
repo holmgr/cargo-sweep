@@ -1,5 +1,8 @@
+use anyhow::anyhow;
 use clap::{ArgGroup, Parser};
 use std::path::PathBuf;
+
+const MEGABYTE: u64 = 1024 * 1024;
 
 pub fn parse() -> Args {
     SweepArgs::parse().into_args()
@@ -59,9 +62,11 @@ pub struct Args {
     #[arg(short, long)]
     installed: bool,
 
-    /// Remove oldest artifacts until the target directory is below the specified size in MB
-    #[arg(short, long, value_name = "MAXSIZE_MB")]
-    maxsize: Option<u64>,
+    /// Remove oldest artifacts from the target folder until it's smaller than MAXSIZE
+    ///
+    /// Unit defaults to MB, examples: --maxsize 500, --maxsize 10GB
+    #[arg(short, long, value_name = "MAXSIZE")]
+    maxsize: Option<String>,
 
     /// Apply on all projects below the given path
     #[arg(short, long)]
@@ -85,8 +90,9 @@ pub struct Args {
 }
 
 impl Args {
-    pub fn criterion(&self) -> Criterion {
-        match &self {
+    // Might fail in case parsing size units fails.
+    pub fn criterion(&self) -> anyhow::Result<Criterion> {
+        Ok(match &self {
             _ if self.stamp => Criterion::Stamp,
             _ if self.file => Criterion::File,
             _ if self.installed => Criterion::Installed,
@@ -97,13 +103,24 @@ impl Args {
             Self {
                 maxsize: Some(size),
                 ..
-            } => Criterion::MaxSize(*size),
+            } => {
+                // Try parsing as `human_size::Size` to accept "MB" and "GB" as units
+                // If it fails, fall back to `u64` and use "MB" as the default unit
+
+                let size = size
+                    .parse::<human_size::Size>()
+                    .map(human_size::Size::to_bytes)
+                    .or_else(|_| size.parse::<u64>().map(|size| size * MEGABYTE))
+                    .map_err(|_| anyhow!(format!("Failed to parse size '{size}'")))?;
+
+                Criterion::MaxSize(size)
+            }
             _ => unreachable!("guaranteed by clap ArgGroup"),
-        }
+        })
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Criterion {
     Stamp,
     File,
@@ -156,5 +173,34 @@ mod tests {
             ..Args::default()
         };
         assert_eq!(args, parse("cargo sweep --toolchains 1,2,3").unwrap());
+    }
+
+    #[test]
+    fn test_maxsize_argument_parsing() {
+        let test_data = [
+            ("3", 3 * 1024 * 1024),
+            ("3MB", 3 * 1000 * 1000),
+            ("100", 100 * 1024 * 1024),
+            ("100MB", 100 * 1000 * 1000),
+            ("100MiB", 100 * 1024 * 1024),
+            ("100GB", 100 * 1000 * 1000 * 1000),
+            ("100GiB", 100 * 1024 * 1024 * 1024),
+            ("700TB", 700 * 1000 * 1000 * 1000 * 1000),
+            ("700TiB", 700 * 1024 * 1024 * 1024 * 1024),
+        ];
+
+        for (input, expected_size) in test_data {
+            let input = format!("cargo-sweep sweep --maxsize {input}");
+            let result = parse(&input).unwrap().criterion().unwrap();
+
+            if result != Criterion::MaxSize(expected_size) {
+                panic!(
+                    "Test failed.\n\
+                     Input: {input}\n\
+                     Expected Size: {expected_size}\n\
+                     Got this instead: {result:?}"
+                );
+            }
+        }
     }
 }
