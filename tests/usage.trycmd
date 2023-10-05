@@ -18,7 +18,7 @@ Options:
   -t, --time <DAYS>              Number of days backwards to keep
       --toolchains <TOOLCHAINS>  Toolchains currently installed by rustup that should have their artifacts kept
   -v, --verbose...               Enable DEBUG logs (use twice for TRACE logs)
-  -h, --help                     Print help
+  -h, --help                     Print help (see more with '--help')
   -V, --version                  Print version
 
 ```
