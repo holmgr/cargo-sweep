@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Only show toolchain list once when using `--installed` [#88](https://github.com/holmgr/cargo-sweep/pull/88)
 - Support multiple projects as input via CLI [#101](https://github.com/holmgr/cargo-sweep/pull/101)
 - Add a `TRACE` log level enabled by two `--verbose` flags [#113](https://github.com/holmgr/cargo-sweep/pull/113)
+- Tell user when `--recursive` is busy traversing directories [#120](https://github.com/holmgr/cargo-sweep/pull/120)
 
 ### Fixed
 
