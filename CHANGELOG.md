@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+*empty*.
+
+## [`0.7.0`](https://github.com/holmgr/cargo-sweep/compare/0.6.2...0.7.0)
+
 ### Changed
 
 - Display the total cleaned amount when sweeping multiple projects [#45](https://github.com/holmgr/cargo-sweep/pull/45)
