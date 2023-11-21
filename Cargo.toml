@@ -8,6 +8,10 @@ keywords = ["tool", "cli", "cargo"]
 license = "MIT"
 repository = "https://github.com/holmgr/cargo-sweep"
 readme = "README.md"
+categories = [
+    "development-tools::cargo-plugins",
+    "filesystem",
+]
 
 [dependencies]
 clap = { version = "4.0.32", features = ["derive"] }
