@@ -33,7 +33,7 @@ Options:
           Store timestamp file at the given path, is used by file option
 
   -t, --time <DAYS>
-          Number of days backwards to keep
+          Delete only artifacts older than ... days
 
   -a, --all
           Apply on all provided projects
