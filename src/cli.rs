@@ -76,7 +76,7 @@ pub struct Args {
     #[arg(short, long)]
     stamp: bool,
 
-    /// Number of days backwards to keep
+    /// Delete only artifacts older than ... days
     #[arg(short, long, value_name = "DAYS")]
     time: Option<u64>,
 
