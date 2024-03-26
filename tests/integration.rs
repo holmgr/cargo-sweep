@@ -323,6 +323,17 @@ fn error_status() -> TestResult {
     Ok(())
 }
 
+/// This scenario used to panic: https://github.com/holmgr/cargo-sweep/issues/117
+#[test]
+fn stamp_file_not_found() -> TestResult {
+    sweep(&["--file"])
+        .current_dir(test_dir().join("sample-project"))
+        .assert()
+        .failure()
+        .stderr(contains("failed to read stamp file").and(contains("panicked").not()));
+    Ok(())
+}
+
 #[test]
 fn path() -> TestResult {
     let (_, target) = build("sample-project")?;
