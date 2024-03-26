@@ -11,6 +11,16 @@ pub fn format_bytes(bytes: u64) -> String {
     format!("{bytes} TiB")
 }
 
+/// Like [format_bytes], but with a special case for formatting `0` as `"nothing"`.
+/// With `--recursive`, this helps visually distinguish folders without outdated artifacts.
+/// See [#93](https://github.com/holmgr/cargo-sweep/issues/93).
+pub fn format_bytes_or_nothing(bytes: u64) -> String {
+    match bytes {
+        0 => "nothing".to_string(),
+        _ => format_bytes(bytes),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -38,6 +48,19 @@ mod tests {
         assert_eq!(
             "1.00 TiB".parse::<human_size::Size>().unwrap().to_bytes(),
             1024 * 1024 * 1024 * 1024
+        );
+    }
+
+    #[test]
+    fn test_format_bytes_or_nothing() {
+        assert_eq!(format_bytes_or_nothing(0), "nothing");
+
+        // Copy-pasted some non-zero values from `format_bytes` tests to test that the output is identical.
+        assert_eq!(format_bytes(1024), format_bytes_or_nothing(1024));
+        assert_eq!(format_bytes(1023), format_bytes_or_nothing(1023));
+        assert_eq!(
+            format_bytes(500 * 1024 * 1024),
+            format_bytes_or_nothing(500 * 1024 * 1024)
         );
     }
 }
