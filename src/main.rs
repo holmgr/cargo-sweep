@@ -22,7 +22,7 @@ use self::fingerprint::{
     hash_toolchains, remove_not_built_with, remove_older_than, remove_older_until_fits,
 };
 use self::stamp::Timestamp;
-use self::util::format_bytes;
+use self::util::{format_bytes, format_bytes_or_nothing};
 
 /// Setup logging according to verbose flag.
 fn setup_logging(verbosity_level: u8) {
@@ -195,14 +195,14 @@ fn main() -> anyhow::Result<()> {
                 Ok(cleaned_amount) if dry_run => {
                     info!(
                         "Would clean: {} from {project_path:?}",
-                        format_bytes(cleaned_amount)
+                        format_bytes_or_nothing(cleaned_amount)
                     );
                     total_cleaned += cleaned_amount;
                 }
                 Ok(cleaned_amount) => {
                     info!(
                         "Cleaned {} from {project_path:?}",
-                        format_bytes(cleaned_amount)
+                        format_bytes_or_nothing(cleaned_amount)
                     );
                     total_cleaned += cleaned_amount;
                 }
@@ -218,14 +218,14 @@ fn main() -> anyhow::Result<()> {
                 Ok(cleaned_amount) if dry_run => {
                     info!(
                         "Would clean: {} from {project_path:?}",
-                        format_bytes(cleaned_amount)
+                        format_bytes_or_nothing(cleaned_amount)
                     );
                     total_cleaned += cleaned_amount;
                 }
                 Ok(cleaned_amount) => {
                     info!(
                         "Cleaned {} from {project_path:?}",
-                        format_bytes(cleaned_amount)
+                        format_bytes_or_nothing(cleaned_amount)
                     );
                     total_cleaned += cleaned_amount;
                 }
@@ -248,14 +248,14 @@ fn main() -> anyhow::Result<()> {
                 Ok(cleaned_amount) if dry_run => {
                     info!(
                         "Would clean: {} from {project_path:?}",
-                        format_bytes(cleaned_amount)
+                        format_bytes_or_nothing(cleaned_amount)
                     );
                     total_cleaned += cleaned_amount;
                 }
                 Ok(cleaned_amount) => {
                     info!(
                         "Cleaned {} from {project_path:?}",
-                        format_bytes(cleaned_amount)
+                        format_bytes_or_nothing(cleaned_amount)
                     );
                     total_cleaned += cleaned_amount;
                 }
