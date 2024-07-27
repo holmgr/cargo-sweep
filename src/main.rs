@@ -3,7 +3,7 @@ use cargo_metadata::{Error, Metadata, MetadataCommand};
 use crossterm::tty::IsTty;
 use fern::colors::{Color, ColoredLevelConfig};
 
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use std::{
     env,
     ffi::OsStr,
@@ -165,7 +165,7 @@ fn main() -> anyhow::Result<()> {
             if out.exists() {
                 return_paths.push(out);
             } else {
-                anyhow::bail!("Failed to clean {:?} as it does not exist.", out)
+                warn!("Failed to clean {:?} as it does not exist.", out)
             };
         }
         return_paths
