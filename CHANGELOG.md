@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-*empty*.
+### Changed
+
+- Don't bail if cleaning fails in one project [#132](https://github.com/holmgr/cargo-sweep/pull/132)
 
 ## [`0.7.0`](https://github.com/holmgr/cargo-sweep/compare/0.6.2...0.7.0)
 
