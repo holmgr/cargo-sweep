@@ -8,10 +8,7 @@ keywords = ["tool", "cli", "cargo"]
 license = "MIT"
 repository = "https://github.com/holmgr/cargo-sweep"
 readme = "README.md"
-categories = [
-    "development-tools::cargo-plugins",
-    "filesystem",
-]
+categories = ["development-tools::cargo-plugins", "filesystem"]
 
 [dependencies]
 clap = { version = "4.0.32", features = ["derive"] }
@@ -27,7 +24,7 @@ serde_json = "1.0"
 human-size = "0.4.3"
 
 [dev-dependencies]
-assert_cmd = "2.0.4"
+assert_cmd = "2.0.16"
 fs_extra = "1.2.0"
 predicates = "2.1.1"
 tempfile = "3.3.0"
