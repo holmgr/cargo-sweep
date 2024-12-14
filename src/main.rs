@@ -139,7 +139,7 @@ fn main() -> anyhow::Result<()> {
     // FIXME: Change to write to every passed in path instead of just the first one
     if let Criterion::Stamp = criterion {
         if paths.len() > 1 {
-            anyhow::bail!("Using multiple paths and --stamp is currently unsupported")
+            anyhow::bail!("Using multiple paths and --stamp is currently unsupported");
         }
 
         debug!("Writing timestamp file in: {:?}", paths[0]);
