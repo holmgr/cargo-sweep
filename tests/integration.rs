@@ -4,6 +4,7 @@ use std::{
     fmt::Debug,
     fs,
     path::{Path, PathBuf},
+    sync::Mutex,
 };
 
 use anyhow::{Context, Result};
@@ -15,6 +16,8 @@ use pretty_assertions::{assert_eq, assert_ne};
 use regex::Regex;
 use tempfile::{tempdir, TempDir};
 use unindent::unindent;
+
+static CONFLICTING_TESTS_MUTEX: Mutex<()> = Mutex::new(());
 
 struct AnyhowWithContext(anyhow::Error);
 
@@ -199,6 +202,8 @@ fn all_flags() -> TestResult {
 
 #[test]
 fn stamp_file() -> TestResult {
+    let _lock = CONFLICTING_TESTS_MUTEX.lock();
+
     let (size, target) = build("sample-project")?;
     let stamp_file_exists = || {
         project_dir("sample-project")
@@ -326,6 +331,8 @@ fn error_status() -> TestResult {
 /// This scenario used to panic: https://github.com/holmgr/cargo-sweep/issues/117
 #[test]
 fn stamp_file_not_found() -> TestResult {
+    let _lock = CONFLICTING_TESTS_MUTEX.lock();
+
     sweep(&["--file"])
         .current_dir(test_dir().join("sample-project"))
         .assert()
