@@ -73,7 +73,7 @@ fn is_hidden(entry: &walkdir::DirEntry) -> bool {
     entry
         .file_name()
         .to_str()
-        .map_or(false, |s| s.starts_with('.'))
+        .is_some_and(|s| s.starts_with('.'))
 }
 
 /// Find all cargo project under the given root path.
