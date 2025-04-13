@@ -2,6 +2,7 @@
 use anyhow::{bail, Context, Error};
 use log::trace;
 use log::{debug, info, warn};
+use rustc_stable_hash::StableSipHasher128 as StableHasher;
 use serde_derive::Deserialize;
 use serde_json::from_str;
 use std::{
@@ -18,6 +19,12 @@ use walkdir::{DirEntry, WalkDir};
 /// This has to match the way Cargo hashes a rustc version.
 /// As such it is copied from Cargos code.
 fn hash_u64<H: Hash>(hashable: &H) -> u64 {
+    let mut hasher = StableHasher::new();
+    hashable.hash(&mut hasher);
+    Hasher::finish(&hasher)
+}
+/// This version of the hash was used prior to Rust 1.85.0.
+fn hash_u64_old<H: Hash>(hashable: &H) -> u64 {
     let mut hasher = SipHasher::new_with_keys(0, 0);
     hashable.hash(&mut hasher);
     hasher.finish()
@@ -326,7 +333,11 @@ fn is_custom_toolchain(toolchain: &str) -> bool {
 fn lookup_from_names(
     iter: impl Iterator<Item = Option<impl AsRef<str>>>,
 ) -> Result<HashSet<u64>, Error> {
-    iter.map(|x| {
+    let mut toolchain_set = HashSet::new();
+    // Some fingerprints made to track the output of build scripts claim to have been built with a rust that hashes to 0.
+    // This can be fixed in cargo, but for now this makes sure we don't clean the files.
+    toolchain_set.insert(0);
+    for x in iter {
         let args = x
             .as_ref()
             .into_iter()
@@ -340,7 +351,7 @@ fn lookup_from_names(
         if !out.status.success() {
             let toolchain = x.as_ref().map_or("", |t| t.as_ref());
             if is_custom_toolchain(toolchain) {
-                return Ok(None);
+                continue;
             }
 
             let err = if out.stdout.is_empty() {
@@ -360,15 +371,10 @@ fn lookup_from_names(
                 String::from_utf8_lossy(&err).to_string()
             );
         }
-        Ok(Some(hash_u64(&String::from_utf8_lossy(&out.stdout))))
-    })
-    .chain(
-        // Some fingerprints made to track the output of build scripts claim to have been built with a rust that hashes to 0.
-        // This can be fixed in cargo, but for now this makes sure we don't clean the files.
-        std::iter::once(Ok(Some(0))),
-    )
-    .filter_map(|x| x.transpose())
-    .collect()
+        toolchain_set.insert(hash_u64(&String::from_utf8_lossy(&out.stdout)));
+        toolchain_set.insert(hash_u64_old(&String::from_utf8_lossy(&out.stdout)));
+    }
+    Ok(toolchain_set)
 }
 
 fn rustup_toolchain_list() -> Option<Vec<String>> {
