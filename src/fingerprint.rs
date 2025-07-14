@@ -102,16 +102,16 @@ fn load_all_fingerprints_built_with(
             }
         }
     }
-    trace!("Hashs to keep: {:#?}", keep);
+    trace!("Hashs to keep: {keep:#?}");
     Ok(keep)
 }
 
-fn last_used_time(fingerprint_dir: &Path) -> Result<Duration, Error> {
+fn last_accessed_or_created(fingerprint_dir: &Path, created: bool) -> Result<Duration, Error> {
     let mut best = Duration::from_secs(3_155_760_000); // 100 years!
     for entry in fs::read_dir(fingerprint_dir)? {
         let accessed = entry?
-            .metadata()?
-            .accessed()?
+            .metadata()
+            .and_then(|m| if created { m.created() } else { m.accessed() })?
             .elapsed()
             .unwrap_or(Duration::from_secs(0));
         if accessed < best {
@@ -121,7 +121,10 @@ fn last_used_time(fingerprint_dir: &Path) -> Result<Duration, Error> {
     Ok(best)
 }
 
-fn load_all_fingerprints_by_time(fingerprint_dir: &Path) -> Result<Vec<(Duration, String)>, Error> {
+fn load_all_fingerprints_by_time(
+    fingerprint_dir: &Path,
+    created: bool,
+) -> Result<Vec<(Duration, String)>, Error> {
     assert_eq!(
         fingerprint_dir
             .file_name()
@@ -132,7 +135,7 @@ fn load_all_fingerprints_by_time(fingerprint_dir: &Path) -> Result<Vec<(Duration
     for entry in fs::read_dir(fingerprint_dir)? {
         let path = entry?.path();
         if path.is_dir() {
-            let last_used = last_used_time(&path)?;
+            let last_used = last_accessed_or_created(&path, created)?;
             let name = path.file_name().unwrap().to_string_lossy();
             if let Some(hash) = hash_from_path_name(&name) {
                 keep.push((last_used, hash.to_string()));
@@ -140,13 +143,14 @@ fn load_all_fingerprints_by_time(fingerprint_dir: &Path) -> Result<Vec<(Duration
         }
     }
     keep.sort_unstable();
-    debug!("Hashs by time: {:#?}", keep);
+    debug!("Hashs by time: {keep:#?}");
     Ok(keep)
 }
 
 fn load_all_fingerprints_newer_than(
     fingerprint_dir: &Path,
     keep_duration: &Duration,
+    created: bool,
 ) -> Result<HashSet<String>, Error> {
     assert_eq!(
         fingerprint_dir
@@ -157,14 +161,14 @@ fn load_all_fingerprints_newer_than(
     let mut keep = HashSet::new();
     for entry in fs::read_dir(fingerprint_dir)? {
         let path = entry?.path();
-        if path.is_dir() && last_used_time(&path)? < *keep_duration {
+        if path.is_dir() && last_accessed_or_created(&path, created)? < *keep_duration {
             let name = path.file_name().unwrap().to_string_lossy();
             if let Some(hash) = hash_from_path_name(&name) {
                 keep.insert(hash.to_string());
             }
         }
     }
-    trace!("Hashs to keep: {:#?}", keep);
+    trace!("Hashs to keep: {keep:#?}");
     Ok(keep)
 }
 
@@ -247,7 +251,7 @@ fn remove_not_matching_in_a_dir(
 }
 
 fn total_disk_space_in_a_profile(dir: &Path) -> Result<HashMap<String, u64>, Error> {
-    debug!("Sizing: {:?} with total_disk_space_in_a_profile", dir);
+    debug!("Sizing: {dir:?} with total_disk_space_in_a_profile");
     let mut total_disk_space = HashMap::new();
     total_disk_space_by_hash_in_a_dir(&dir.join(".fingerprint"), &mut total_disk_space)?;
     total_disk_space_by_hash_in_a_dir(&dir.join("build"), &mut total_disk_space)?;
@@ -268,10 +272,7 @@ fn remove_not_built_with_in_a_profile(
     keep: &HashSet<String>,
     dry_run: bool,
 ) -> Result<u64, Error> {
-    debug!(
-        "cleaning: {:?} with remove_not_built_with_in_a_profile",
-        dir
-    );
+    debug!("cleaning: {dir:?} with remove_not_built_with_in_a_profile");
     let mut total_disk_space = 0;
     total_disk_space += remove_not_matching_in_a_dir(&dir.join("build"), keep, dry_run)?;
     total_disk_space += remove_not_matching_in_a_dir(&dir.join("deps"), keep, dry_run)?;
@@ -399,7 +400,7 @@ fn rustup_toolchain_list() -> Option<Vec<String>> {
 
 pub fn hash_toolchains(rust_versions: Option<&Vec<String>>) -> Result<HashSet<u64>, Error> {
     let hashed_versions = if let Some(versions) = rust_versions {
-        info!("Using specified installed toolchains: {:?}", versions);
+        info!("Using specified installed toolchains: {versions:?}");
 
         // Validate that the CLI provided toolchains exist
         {
@@ -424,7 +425,7 @@ pub fn hash_toolchains(rust_versions: Option<&Vec<String>>) -> Result<HashSet<u6
     } else {
         match rustup_toolchain_list() {
             Some(list) => {
-                info!("Using all installed toolchains: {:?}", list);
+                info!("Using all installed toolchains: {list:?}");
                 lookup_from_names(list.iter().map(Some))?
             }
             None => {
@@ -443,7 +444,7 @@ pub fn remove_not_built_with(
     hashed_rust_version_to_keep: &HashSet<u64>,
     dry_run: bool,
 ) -> Result<u64, Error> {
-    debug!("cleaning: {:?} with remove_not_built_with", dir);
+    debug!("cleaning: {dir:?} with remove_not_built_with");
     let mut total_disk_space = 0;
     for fing in lookup_all_fingerprint_dirs(dir) {
         let path = fing.into_path();
@@ -462,13 +463,14 @@ pub fn remove_older_than(
     path: &Path,
     keep_duration: &Duration,
     dry_run: bool,
+    created: bool,
 ) -> Result<u64, Error> {
-    debug!("cleaning: {:?} with remove_older_than", path);
+    debug!("cleaning: {path:?} with remove_older_than");
     let mut total_disk_space = 0;
 
     for fing in lookup_all_fingerprint_dirs(path) {
         let path = fing.into_path();
-        let keep = load_all_fingerprints_newer_than(&path, keep_duration)?;
+        let keep = load_all_fingerprints_newer_than(&path, keep_duration, created)?;
         total_disk_space +=
             remove_not_built_with_in_a_profile(path.parent().unwrap(), &keep, dry_run)?;
     }
@@ -476,22 +478,27 @@ pub fn remove_older_than(
     Ok(total_disk_space)
 }
 
-pub fn remove_older_until_fits(path: &Path, target_size: u64, dry_run: bool) -> Result<u64, Error> {
-    debug!("cleaning: {:?} with remove_older_until_fits", path);
+pub fn remove_older_until_fits(
+    path: &Path,
+    target_size: u64,
+    dry_run: bool,
+    created: bool,
+) -> Result<u64, Error> {
+    debug!("cleaning: {path:?} with remove_older_until_fits");
     let starting_size = total_disk_space_dir(path);
     if starting_size <= target_size {
         // already below target
         return Ok(0);
     }
     let size_to_remove = starting_size - target_size;
-    debug!("size_to_remove: {:?}", size_to_remove);
+    debug!("size_to_remove: {size_to_remove:?}");
 
     let fingerprint_dirs: Vec<DirEntry> = lookup_all_fingerprint_dirs(path).collect();
     let mut order: Vec<(Duration, u64, &Path, String)> = vec![];
     for fing in &fingerprint_dirs {
         let path = fing.path();
         let sizes = total_disk_space_in_a_profile(path.parent().unwrap())?;
-        for (last_used, hash) in load_all_fingerprints_by_time(path)? {
+        for (last_used, hash) in load_all_fingerprints_by_time(path, created)? {
             order.push((
                 last_used,
                 *(sizes.get(&hash).unwrap_or(&0)),
