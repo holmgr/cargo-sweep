@@ -5,6 +5,7 @@ use log::{debug, info, warn};
 use rustc_stable_hash::StableSipHasher128 as StableHasher;
 use serde_derive::Deserialize;
 use serde_json::from_str;
+use std::time::UNIX_EPOCH;
 use std::{
     collections::{HashMap, HashSet},
     fs::{self, remove_dir_all, remove_file, File},
@@ -107,18 +108,20 @@ fn load_all_fingerprints_built_with(
 }
 
 fn last_accessed_or_created(fingerprint_dir: &Path, created: bool) -> Result<Duration, Error> {
-    let mut best = Duration::from_secs(3_155_760_000); // 100 years!
+    let mut youngest = UNIX_EPOCH;
     for entry in fs::read_dir(fingerprint_dir)? {
-        let accessed = entry?
-            .metadata()
-            .and_then(|m| if created { m.created() } else { m.accessed() })?
-            .elapsed()
-            .unwrap_or(Duration::from_secs(0));
-        if accessed < best {
-            best = accessed;
+        let file_time =
+            entry?
+                .metadata()
+                .and_then(|m| if created { m.created() } else { m.accessed() })?;
+        if file_time > youngest {
+            youngest = file_time;
         }
     }
-    Ok(best)
+    match youngest {
+        t if t > UNIX_EPOCH => youngest.elapsed().map_err(Error::new),
+        _ => Ok(Duration::from_secs(0)),
+    }
 }
 
 fn load_all_fingerprints_by_time(
