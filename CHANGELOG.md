@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [`0.8.0`](https://github.com/holmgr/cargo-sweep/compare/0.7.0...0.8.0)
+
 ### Fixes
 
 - Update hash algorithm for Rust >= 1.85 [#139](https://github.com/holmgr/cargo-sweep/pull/139)
