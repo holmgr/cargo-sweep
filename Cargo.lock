@@ -112,7 +112,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-sweep"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -746,8 +746,9 @@ checksum = "dbb5fb1acd8a1a18b3dd5be62d25485eb770e05afb408a9627d14d451bae12da"
 
 [[package]]
 name = "rustc-stable-hash"
-version = "0.1.0"
-source = "git+https://github.com/rust-lang/rustc-stable-hash.git?rev=3805516b78c7b2946ae2071d71ffc8235399652d#3805516b78c7b2946ae2071d71ffc8235399652d"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "781442f29170c5c93b7185ad559492601acdc71d5bb0706f5868094f45cfcd08"
 
 [[package]]
 name = "rustix"
