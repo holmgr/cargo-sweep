@@ -1,9 +1,9 @@
 use anyhow::Context;
 use cargo_metadata::{Error, Metadata, MetadataCommand};
-use crossterm::tty::IsTty;
 use fern::colors::{Color, ColoredLevelConfig};
 
 use log::{debug, error, info, warn};
+use std::io::IsTerminal;
 use std::{
     env,
     ffi::OsStr,
@@ -32,7 +32,7 @@ fn setup_logging(verbosity_level: u8) {
         2.. => log::LevelFilter::Trace,
     };
 
-    let isatty = std::io::stdout().is_tty();
+    let isatty = std::io::stdout().is_terminal();
 
     // Configure colors for each log line
     let level_colors = ColoredLevelConfig::new()
@@ -128,6 +128,7 @@ fn main() -> anyhow::Result<()> {
 
     let criterion = args.criterion()?;
     let dry_run = args.dry_run;
+    let created = args.created;
     setup_logging(args.verbose);
 
     // Default to current invocation path.
@@ -165,7 +166,7 @@ fn main() -> anyhow::Result<()> {
             if out.exists() {
                 return_paths.push(out);
             } else {
-                warn!("Failed to clean {:?} as it does not exist.", out)
+                warn!("Failed to clean {out:?} as it does not exist.")
             };
         }
         return_paths
@@ -214,7 +215,7 @@ fn main() -> anyhow::Result<()> {
         }
     } else if let Criterion::MaxSize(size) = criterion {
         for project_path in &processed_paths {
-            match remove_older_until_fits(project_path, size, dry_run) {
+            match remove_older_until_fits(project_path, size, dry_run, created) {
                 Ok(cleaned_amount) if dry_run => {
                     info!(
                         "Would clean: {} from {project_path:?}",
@@ -229,7 +230,7 @@ fn main() -> anyhow::Result<()> {
                     );
                     total_cleaned += cleaned_amount;
                 }
-                Err(e) => error!("Failed to clean {:?}: {:?}", project_path, e),
+                Err(e) => error!("Failed to clean {project_path:?}: {e:?}"),
             };
         }
     } else {
@@ -243,7 +244,7 @@ fn main() -> anyhow::Result<()> {
         };
 
         for project_path in &processed_paths {
-            match remove_older_than(project_path, &keep_duration, dry_run) {
+            match remove_older_than(project_path, &keep_duration, dry_run, created) {
                 Ok(cleaned_amount) if dry_run => {
                     info!(
                         "Would clean: {} from {project_path:?}",
@@ -258,7 +259,7 @@ fn main() -> anyhow::Result<()> {
                     );
                     total_cleaned += cleaned_amount;
                 }
-                Err(e) => error!("Failed to clean {:?}: {:?}", project_path, e),
+                Err(e) => error!("Failed to clean {project_path:?}: {e:?}"),
             };
         }
 

@@ -15,6 +15,7 @@ Options:
   -m, --maxsize <MAXSIZE>        Remove oldest artifacts from the target folder until it's smaller than MAXSIZE
   -r, --recursive                Apply on all projects below the given path
   -s, --stamp                    Store timestamp file at the given path, is used by file option
+      --created                  Use creation time instead of last access time
   -t, --time <DAYS>              Delete only artifacts older than ... days
   -a, --all                      Apply on all provided projects
       --toolchains <TOOLCHAINS>  Toolchains currently installed by rustup that should have their artifacts kept

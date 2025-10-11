@@ -76,6 +76,10 @@ pub struct Args {
     #[arg(short, long)]
     stamp: bool,
 
+    /// Use creation time instead of last access time
+    #[arg(long)]
+    pub created: bool,
+
     /// Delete only artifacts older than ... days
     #[arg(short, long, value_name = "DAYS")]
     time: Option<u64>,
