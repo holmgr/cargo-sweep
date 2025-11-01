@@ -521,7 +521,7 @@ pub fn remove_older_until_fits(path: &Path, target_size: u64, dry_run: bool) -> 
         }
         if !printed {
             // TODO: consider formatting better for printing
-            info!("Removing older then: {:?}", &last_used);
+            info!("Removing older than: {:?}", &last_used);
             printed = true;
         }
         organized
