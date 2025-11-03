@@ -13,7 +13,7 @@ jobs:
           components: clippy
 
       - name: restore build & cargo cache
-        uses: Swatinem/rust-cache@v1
+        uses: Swatinem/rust-cache@v2
 
       - name: show warnings as check annotations on the PR
         # rust.json is copied from https://github.com/hecrj/setup-rust-action/blob/master/.github/rust.json
@@ -44,7 +44,7 @@ jobs:
           target: ${{ matrix.target }}
 
       - name: restore build & cargo cache
-        uses: Swatinem/rust-cache@v1
+        uses: Swatinem/rust-cache@v2
 
       - name: show warnings as check annotations on the PR
         run: echo "##[add-matcher].github/rust.json"
@@ -67,7 +67,7 @@ jobs:
           targets: x86_64-pc-windows-gnu
 
       - name: restore build & cargo cache
-        uses: Swatinem/rust-cache@v1
+        uses: Swatinem/rust-cache@v2
 
       - name: show warnings as check annotations on the PR
         run: echo "##[add-matcher].github/rust.json"
