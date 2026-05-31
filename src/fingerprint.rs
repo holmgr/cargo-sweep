@@ -5,6 +5,7 @@ use log::{debug, info, warn};
 use rustc_stable_hash::StableSipHasher128 as StableHasher;
 use serde_derive::Deserialize;
 use serde_json::from_str;
+use std::path::PathBuf;
 use std::{
     collections::{HashMap, HashSet},
     fs::{self, remove_dir_all, remove_file, File},
@@ -246,6 +247,41 @@ fn remove_not_matching_in_a_dir(
     Ok(total_disk_space)
 }
 
+fn remove_dir(dir: &Path, dry_run: bool) -> Result<u64, Error> {
+    let mut total_disk_space = 0;
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let metadata = entry.metadata()?;
+        let path = entry.path();
+        if path.is_file() {
+            total_disk_space += metadata.len();
+            if !dry_run {
+                match remove_file(&path) {
+                    Ok(_) => debug!("Successfully removed: {:?}", &path),
+                    Err(e) => warn!("Failed to remove: {:?} {}", &path, e),
+                };
+            } else {
+                debug!("Would remove: {:?}", &path);
+            }
+        } else if path.is_dir() {
+            total_disk_space += total_disk_space_dir(&path);
+            if !dry_run {
+                match remove_dir_all(&path) {
+                    Ok(_) => debug!("Successfully removed: {:?}", &path),
+                    Err(e) => warn!("Failed to remove: {:?} {}", &path, e),
+                };
+            } else {
+                debug!("Would remove: {:?}", &path);
+            }
+        }
+    }
+    match remove_dir_all(dir) {
+        Ok(_) => debug!("Successfully removed: {:?}", &dir),
+        Err(e) => warn!("Failed to remove: {:?} {}", &dir, e),
+    };
+    Ok(total_disk_space)
+}
+
 fn total_disk_space_in_a_profile(dir: &Path) -> Result<HashMap<String, u64>, Error> {
     debug!("Sizing: {:?} with total_disk_space_in_a_profile", dir);
     let mut total_disk_space = HashMap::new();
@@ -296,6 +332,19 @@ fn lookup_all_fingerprint_dirs(dir: &Path) -> impl Iterator<Item = DirEntry> {
             e.file_name()
                 .to_str()
                 .map(|s| s == ".fingerprint")
+                .unwrap_or(false)
+        })
+}
+
+fn lookup_all_fingerprint_dirs_new_build_dir_layout(dir: &Path) -> impl Iterator<Item = DirEntry> {
+    WalkDir::new(dir)
+        .min_depth(1)
+        .into_iter()
+        .filter_map(|entry| entry.ok())
+        .filter(|e| {
+            e.file_name()
+                .to_str()
+                .map(|s| s == "fingerprint")
                 .unwrap_or(false)
         })
 }
@@ -473,6 +522,15 @@ pub fn remove_older_than(
             remove_not_built_with_in_a_profile(path.parent().unwrap(), &keep, dry_run)?;
     }
 
+    // New Cargo build-dir layout support
+    for fing in lookup_all_fingerprint_dirs_new_build_dir_layout(path) {
+        let path = fing.into_path();
+        if last_used_time(&path)? < *keep_duration {
+            let build_unit_dir = path.parent().unwrap();
+            total_disk_space += remove_dir(build_unit_dir, dry_run)?;
+        }
+    }
+
     Ok(total_disk_space)
 }
 
@@ -487,7 +545,8 @@ pub fn remove_older_until_fits(path: &Path, target_size: u64, dry_run: bool) -> 
     debug!("size_to_remove: {:?}", size_to_remove);
 
     let fingerprint_dirs: Vec<DirEntry> = lookup_all_fingerprint_dirs(path).collect();
-    let mut order: Vec<(Duration, u64, &Path, String)> = vec![];
+    // If hash is `Some` it's the old Cargo build-dir layout. `None` is the new build-dir layout.
+    let mut order: Vec<(Duration, u64, PathBuf, Option<String>)> = vec![];
     for fing in &fingerprint_dirs {
         let path = fing.path();
         let sizes = total_disk_space_in_a_profile(path.parent().unwrap())?;
@@ -495,10 +554,20 @@ pub fn remove_older_until_fits(path: &Path, target_size: u64, dry_run: bool) -> 
             order.push((
                 last_used,
                 *(sizes.get(&hash).unwrap_or(&0)),
-                fing.path(),
-                hash,
+                fing.clone().into_path(),
+                Some(hash),
             ));
         }
+    }
+
+    // New Cargo build-dir layout
+    let fingerprint_dirs_new_layout: Vec<DirEntry> =
+        lookup_all_fingerprint_dirs_new_build_dir_layout(path).collect();
+    for fing in &fingerprint_dirs_new_layout {
+        let path = fing.path().to_path_buf();
+        let size = total_disk_space_dir(path.parent().unwrap());
+        let last_used = last_used_time(&path)?;
+        order.push((last_used, size, path, None));
     }
 
     // as Duration is first in the elements of order this sorts items from new to old
@@ -507,16 +576,22 @@ pub fn remove_older_until_fits(path: &Path, target_size: u64, dry_run: bool) -> 
     let mut removed = 0u64;
     // organized keeps track of what needs to be keep per fingerprint dirs
     let mut organized = HashMap::new();
+    let mut to_remove_new_layout = Vec::new();
     let mut printed = false;
 
     for dir in &fingerprint_dirs {
         // populate organized with keeping nothing in each fingerprint dirs
-        organized.entry(dir.path()).or_insert_with(HashSet::new);
+        organized
+            .entry(dir.clone().into_path())
+            .or_insert_with(HashSet::new);
     }
 
     for (last_used, sizes, fing, hash) in order.into_iter().rev() {
         if removed + sizes < size_to_remove {
             removed += sizes;
+            if hash.is_none() {
+                to_remove_new_layout.push(fing.parent().unwrap().to_path_buf());
+            }
             continue;
         }
         if !printed {
@@ -524,10 +599,13 @@ pub fn remove_older_until_fits(path: &Path, target_size: u64, dry_run: bool) -> 
             info!("Removing older than: {:?}", &last_used);
             printed = true;
         }
-        organized
-            .entry(fing)
-            .or_insert_with(HashSet::new)
-            .insert(hash);
+
+        if let Some(hash) = hash {
+            organized
+                .entry(fing)
+                .or_insert_with(HashSet::new)
+                .insert(hash);
+        }
     }
 
     let mut total_disk_space = 0;
@@ -535,6 +613,9 @@ pub fn remove_older_until_fits(path: &Path, target_size: u64, dry_run: bool) -> 
     for (fing, keep) in organized {
         total_disk_space +=
             remove_not_built_with_in_a_profile(fing.parent().unwrap(), &keep, dry_run)?;
+    }
+    for build_unit in to_remove_new_layout {
+        total_disk_space += remove_dir(&build_unit, dry_run)?;
     }
 
     Ok(total_disk_space)

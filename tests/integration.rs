@@ -607,7 +607,7 @@ fn check_toolchain_listing_on_multiple_projects() -> TestResult {
         .filter(|line| line.starts_with("[INFO]"))
         .collect::<Vec<_>>();
 
-    assert_eq!(lines.len(), 4);
+    assert_eq!(lines.len(), 5);
     assert_eq!(
         lines[0].trim(),
         "[INFO] Searching recursively for Rust project folders"
@@ -615,6 +615,7 @@ fn check_toolchain_listing_on_multiple_projects() -> TestResult {
     assert!(lines[1].starts_with("[INFO] Using all installed toolchains:"));
     assert!(lines[2].starts_with("[INFO] Would clean:"));
     assert!(lines[3].starts_with("[INFO] Would clean:"));
+    assert!(lines[4].starts_with("[INFO] Total amount:"));
 
     Ok(())
 }
